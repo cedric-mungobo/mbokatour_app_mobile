@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import '../../core/services/media_settings_service.dart';
 import '../../domain/entities/place_entity.dart';
 
 class PlaceCard extends StatelessWidget {
@@ -17,130 +20,147 @@ class PlaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = place.name.toUpperCase();
-    final hasImage = place.imageUrl != null && place.imageUrl!.isNotEmpty;
-    final hasVideo = place.videoUrl != null && place.videoUrl!.isNotEmpty;
+    return Watch((context) {
+      final isMuted = MediaSettingsService.isMuted.value;
+      final label = place.name.toUpperCase();
+      final hasImage = place.imageUrl != null && place.imageUrl!.isNotEmpty;
+      final hasVideo = place.videoUrl != null && place.videoUrl!.isNotEmpty;
 
-    return AspectRatio(
-      aspectRatio: aspectRatio,
-      child: InkWell(
-        onTap: onTap,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            hasVideo
-                ? _AutoPlayVideoBackground(videoUrl: place.videoUrl!)
-                : hasImage
-                ? Image.network(
-                    place.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      decoration: BoxDecoration(
+      return AspectRatio(
+        aspectRatio: aspectRatio,
+        child: InkWell(
+          onTap: onTap,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              hasVideo
+                  ? _AutoPlayVideoBackground(
+                      videoUrl: place.videoUrl!,
+                      isMuted: isMuted,
+                    )
+                  : hasImage
+                  ? CachedNetworkImage(
+                      imageUrl: place.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              const Color(0xFF1B1B1B),
+                              Colors.grey.shade900,
+                            ],
+                          ),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.photo,
+                            size: 48,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Container(
+                      decoration: const BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [const Color(0xFF1B1B1B), Colors.grey.shade900],
+                          colors: [Color(0xFF223047), Color(0xFF3D4E2F)],
                         ),
                       ),
-                      child: const Center(
-                        child: Icon(Icons.photo, size: 48, color: Colors.white70),
-                      ),
-                    ),
-                  )
-                : Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF223047), Color(0xFF3D4E2F)],
-                      ),
-                    ),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.place,
-                              size: 34,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              place.name,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.place,
+                                size: 34,
                                 color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 8),
+                              Text(
+                                place.name,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-            if (hasImage || hasVideo)
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.90),
-                        Colors.black.withValues(alpha: 0.40),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.0, 0.50, 1.0],
+              if (hasImage || hasVideo)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.90),
+                          Colors.black.withValues(alpha: 0.40),
+                          Colors.transparent,
+                        ],
+                        stops: const [0.0, 0.50, 1.0],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            Positioned(
-              left: 14,
-              right: 14,
-              bottom: 12,
-              child: Row(
-                children: [
-                  if (place.hasVideo) ...[
-                    const Icon(
-                      Icons.videocam_outlined,
-                      size: 14,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        letterSpacing: 0.8,
-                        fontWeight: FontWeight.w600,
+              Positioned(
+                left: 14,
+                right: 14,
+                bottom: 12,
+                child: Row(
+                  children: [
+                    if (place.hasVideo) ...[
+                      const Icon(
+                        Icons.videocam_outlined,
+                        size: 14,
                         color: Colors.white,
                       ),
+                      const SizedBox(width: 6),
+                    ],
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          letterSpacing: 0.8,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 
 class _AutoPlayVideoBackground extends StatefulWidget {
   final String videoUrl;
+  final bool isMuted;
 
-  const _AutoPlayVideoBackground({required this.videoUrl});
+  const _AutoPlayVideoBackground({
+    required this.videoUrl,
+    required this.isMuted,
+  });
 
   @override
   State<_AutoPlayVideoBackground> createState() =>
@@ -181,7 +201,7 @@ class _AutoPlayVideoBackgroundState extends State<_AutoPlayVideoBackground> {
       );
       await controller.initialize();
       await controller.setLooping(true);
-      await controller.setVolume(0);
+      await controller.setVolume(widget.isMuted ? 0 : 1);
       _attachErrorListener(controller);
 
       if (!mounted) {
@@ -221,6 +241,14 @@ class _AutoPlayVideoBackgroundState extends State<_AutoPlayVideoBackground> {
       }
     } else {
       await _controller?.pause();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _AutoPlayVideoBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isMuted != widget.isMuted) {
+      _controller?.setVolume(widget.isMuted ? 0 : 1);
     }
   }
 

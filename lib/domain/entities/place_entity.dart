@@ -15,6 +15,17 @@ class PlaceMedia extends Equatable {
 
   bool get isVideo => type.toLowerCase() == 'video';
   bool get isPhoto => type.toLowerCase() == 'photo';
+  bool get canPlayVideo => isVideo && _isLikelyVideoUrl(url);
+
+  static bool _isLikelyVideoUrl(String value) {
+    final lower = value.toLowerCase();
+    return lower.contains('/video/upload/') ||
+        lower.endsWith('.mp4') ||
+        lower.endsWith('.m3u8') ||
+        lower.endsWith('.webm') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.mkv');
+  }
 
   @override
   List<Object?> get props => [id, url, type, isPrimary];

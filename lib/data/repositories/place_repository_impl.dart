@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/services/dio_service.dart';
 import '../../domain/entities/place_entity.dart';
@@ -22,8 +23,18 @@ class PlaceRepositoryImpl {
 
   Future<PlaceEntity> getPlaceById(String id) async {
     try {
+      if (kDebugMode) {
+        debugPrint('PLACE GET_BY_ID => id=$id');
+      }
       final response = await _dioService.get('${ApiConstants.places}/$id');
-      return PlaceModel.fromJson(_extractPlace(response.data));
+      final place = PlaceModel.fromJson(_extractPlace(response.data));
+      if (kDebugMode) {
+        debugPrint(
+          'PLACE GET_BY_ID OK => id=${place.id}, '
+          'name=${place.name}, media=${place.media.length}',
+        );
+      }
+      return place;
     } catch (e) {
       throw Exception('Erreur lors de la récupération du lieu: $e');
     }
