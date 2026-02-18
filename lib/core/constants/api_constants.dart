@@ -19,6 +19,6 @@ class ApiConstants {
   static String get placeSearch => '$apiPrefix/places/search';
 
   // Timeout
-  static const Duration connectTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 30);
+  static const Duration connectTimeout = Duration(seconds: 45);
+  static const Duration receiveTimeout = Duration(seconds: 45);
 }

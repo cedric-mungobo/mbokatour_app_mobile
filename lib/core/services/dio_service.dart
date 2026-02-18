@@ -81,11 +81,33 @@ class DioService {
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    try {
-      return await _dio.get(path, queryParameters: queryParameters);
-    } catch (e) {
-      rethrow;
+    const maxAttempts = 2;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await _dio.get(path, queryParameters: queryParameters);
+      } on DioException catch (e) {
+        final isLastAttempt = attempt == maxAttempts;
+        final isRetryable =
+            e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionError;
+
+        if (!isRetryable || isLastAttempt) {
+          rethrow;
+        }
+
+        if (kDebugMode) {
+          debugPrint(
+            'RETRY GET[$attempt/$maxAttempts] => PATH: ${_dio.options.baseUrl}$path',
+          );
+        }
+
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+      }
     }
+
+    throw StateError('Unexpected request flow');
   }
 
   // POST request

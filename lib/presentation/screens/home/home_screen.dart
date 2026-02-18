@@ -43,8 +43,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _loadPlaces() async {
-    await _store.loadPlaces(query: _searchController.text);
+  Future<void> _loadPlaces({bool forceRefresh = false}) async {
+    await _store.loadPlaces(
+      query: _searchController.text,
+      forceRefresh: forceRefresh,
+    );
     if (mounted && _store.errorMessage.value != null) {
       NotificationService.error(context, _store.errorMessage.value!);
     }
@@ -70,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Positioned.fill(
                 child: RefreshIndicator(
-                  onRefresh: _loadPlaces,
+                  onRefresh: () => _loadPlaces(forceRefresh: true),
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.only(top: 0, bottom: 0),
@@ -205,9 +208,9 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(
-                  alpha: 0.14,
-                ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.14),
                 shape: BoxShape.circle,
               ),
               child: Icon(
