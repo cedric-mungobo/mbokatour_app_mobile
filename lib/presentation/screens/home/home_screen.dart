@@ -63,84 +63,92 @@ class _HomeScreenState extends State<HomeScreen> {
     final bottomInset = MediaQuery.of(context).padding.bottom;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
       child: Scaffold(
         body: Watch((context) {
           final isLoading = _store.isPlacesLoading.value;
           final isLoadingMore = _store.isPlacesLoadingMore.value;
           final places = _store.places.value;
 
-          return Stack(
-            children: [
-              Positioned.fill(
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: (notification) {
-                    if (notification.metrics.extentAfter < 600 &&
-                        _store.hasMorePlaces.value &&
-                        !isLoading &&
-                        !isLoadingMore) {
-                      _store.loadMorePlaces(query: _searchController.text);
-                    }
-                    return false;
-                  },
-                  child: RefreshIndicator(
-                    onRefresh: () => _loadPlaces(forceRefresh: true),
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(top: 0, bottom: 0),
-                      children: [
-                        if (isLoading)
-                          const SizedBox(
-                            height: 380,
-                            child: Center(child: CircularProgressIndicator()),
-                          )
-                        else if (places.isEmpty)
-                          const SizedBox(
-                            height: 380,
-                            child: Center(child: Text('Aucun lieu trouvé')),
-                          )
-                        else
-                          MasonryGridView.count(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 0,
-                            crossAxisSpacing: 0,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: places.length,
-                            itemBuilder: (context, index) {
-                              final place = places[index];
-                              return PlaceCard(
-                                place: place,
-                                aspectRatio: _resolveAspectRatio(place),
-                                onTap: () => context.go('/place/${place.id}'),
-                              );
-                            },
-                          ),
-                        if (isLoadingMore)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child: Center(child: CircularProgressIndicator()),
-                          ),
-                        if (!isLoading &&
-                            !isLoadingMore &&
-                            places.isNotEmpty &&
-                            !_store.hasMorePlaces.value)
-                          const SizedBox(height: 24),
-                      ],
+          return MediaQuery.removePadding(
+            context: context,
+            removeTop: true,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (notification.metrics.extentAfter < 600 &&
+                          _store.hasMorePlaces.value &&
+                          !isLoading &&
+                          !isLoadingMore) {
+                        _store.loadMorePlaces(query: _searchController.text);
+                      }
+                      return false;
+                    },
+                    child: RefreshIndicator(
+                      onRefresh: () => _loadPlaces(forceRefresh: true),
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(top: 0, bottom: 0),
+                        children: [
+                          if (isLoading)
+                            const SizedBox(
+                              height: 380,
+                              child: Center(child: CircularProgressIndicator()),
+                            )
+                          else if (places.isEmpty)
+                            const SizedBox(
+                              height: 380,
+                              child: Center(child: Text('Aucun lieu trouvé')),
+                            )
+                          else
+                            MasonryGridView.count(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 0,
+                              crossAxisSpacing: 0,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: places.length,
+                              itemBuilder: (context, index) {
+                                final place = places[index];
+                                return PlaceCard(
+                                  place: place,
+                                  aspectRatio: _resolveAspectRatio(place),
+                                  onTap: () => context.go('/place/${place.id}'),
+                                );
+                              },
+                            ),
+                          if (isLoadingMore)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                          if (!isLoading &&
+                              !isLoadingMore &&
+                              places.isNotEmpty &&
+                              !_store.hasMorePlaces.value)
+                            const SizedBox(height: 24),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                left: 24,
-                right: 24,
-                bottom: 16 + bottomInset,
-                child: _BottomSearchBar(
-                  controller: _searchController,
-                  onChanged: _onSearchChanged,
+                Positioned(
+                  left: 24,
+                  right: 24,
+                  bottom: 16 + bottomInset,
+                  child: _BottomSearchBar(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         }),
       ),
