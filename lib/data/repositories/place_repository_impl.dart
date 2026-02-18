@@ -4,6 +4,20 @@ import '../../core/services/dio_service.dart';
 import '../../domain/entities/place_entity.dart';
 import '../models/place_model.dart';
 
+class PaginatedPlacesResult {
+  final List<PlaceEntity> places;
+  final int currentPage;
+  final int lastPage;
+
+  const PaginatedPlacesResult({
+    required this.places,
+    required this.currentPage,
+    required this.lastPage,
+  });
+
+  bool get hasMore => currentPage < lastPage;
+}
+
 class PlaceRepositoryImpl {
   final DioService _dioService;
 
@@ -11,11 +25,29 @@ class PlaceRepositoryImpl {
     : _dioService = dioService;
 
   Future<List<PlaceEntity>> getPlaces() async {
-    try {
-      final response = await _dioService.get(ApiConstants.places);
-      final List<dynamic> data = _extractPlaces(response.data);
+    final result = await getPlacesPage(page: 1);
+    return result.places;
+  }
 
-      return data.map((json) => PlaceModel.fromJson(json)).toList();
+  Future<PaginatedPlacesResult> getPlacesPage({
+    required int page,
+    String query = '',
+  }) async {
+    try {
+      final isSearch = query.trim().isNotEmpty;
+      final response = await _dioService.get(
+        isSearch ? ApiConstants.placeSearch : ApiConstants.places,
+        queryParameters: {'page': page, if (isSearch) 'q': query.trim()},
+      );
+      final payload = _asMap(response.data);
+      final List<dynamic> data = _extractPlaces(payload);
+      final meta = _extractPaginationMeta(payload, fallbackPage: page);
+
+      return PaginatedPlacesResult(
+        places: data.map((json) => PlaceModel.fromJson(json)).toList(),
+        currentPage: meta.currentPage,
+        lastPage: meta.lastPage,
+      );
     } catch (e) {
       throw Exception('Erreur lors de la récupération des lieux: $e');
     }
@@ -44,17 +76,8 @@ class PlaceRepositoryImpl {
   }
 
   Future<List<PlaceEntity>> searchPlaces(String query) async {
-    try {
-      final response = await _dioService.get(
-        ApiConstants.placeSearch,
-        queryParameters: {'q': query},
-      );
-      final List<dynamic> data = _extractPlaces(response.data);
-
-      return data.map((json) => PlaceModel.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Erreur lors de la recherche de lieux: $e');
-    }
+    final result = await getPlacesPage(page: 1, query: query);
+    return result.places;
   }
 
   List<dynamic> _extractPlaces(dynamic payload) {
@@ -68,6 +91,34 @@ class PlaceRepositoryImpl {
     }
 
     return const [];
+  }
+
+  Map<String, dynamic> _asMap(dynamic payload) {
+    if (payload is Map<String, dynamic>) return payload;
+    return const <String, dynamic>{};
+  }
+
+  _PaginationMeta _extractPaginationMeta(
+    Map<String, dynamic> payload, {
+    required int fallbackPage,
+  }) {
+    final rawMeta = payload['meta'];
+    if (rawMeta is Map<String, dynamic>) {
+      final currentPage = _asInt(rawMeta['current_page']) ?? fallbackPage;
+      final lastPage = _asInt(rawMeta['last_page']) ?? currentPage;
+      return _PaginationMeta(
+        currentPage: currentPage,
+        lastPage: lastPage < 1 ? 1 : lastPage,
+      );
+    }
+
+    return _PaginationMeta(currentPage: fallbackPage, lastPage: fallbackPage);
+  }
+
+  int? _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
   }
 
   Map<String, dynamic> _extractPlace(dynamic payload) {
@@ -93,4 +144,11 @@ class PlaceRepositoryImpl {
       debugPrint('$label [${(i ~/ chunkSize) + 1}]: ${text.substring(i, end)}');
     }
   }
+}
+
+class _PaginationMeta {
+  final int currentPage;
+  final int lastPage;
+
+  const _PaginationMeta({required this.currentPage, required this.lastPage});
 }

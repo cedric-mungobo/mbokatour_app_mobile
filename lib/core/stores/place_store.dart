@@ -14,17 +14,22 @@ class PlaceStore {
   final places = signal<List<PlaceEntity>>([]);
   final selectedPlace = signal<PlaceEntity?>(null);
   final isPlacesLoading = signal(false);
+  final isPlacesLoadingMore = signal(false);
   final isPlaceLoading = signal(false);
   final errorMessage = signal<String?>(null);
+  final hasMorePlaces = signal(false);
 
   PlaceRepositoryImpl? _repository;
   Future<void>? _initializing;
   Future<void>? _placesRequestInFlight;
+  Future<void>? _placesLoadMoreInFlight;
   final Map<String, Future<void>> _placeRequestInFlight = {};
   final Map<String, PlaceEntity> _placeByIdCache = {};
   final Map<String, DateTime> _placeByIdFetchedAt = {};
   String _lastPlacesQuery = '';
   DateTime? _lastPlacesFetchedAt;
+  int _currentPlacesPage = 0;
+  int _lastPlacesPage = 1;
 
   static const Duration _memoryCacheTtl = Duration(minutes: 2);
 
@@ -74,14 +79,19 @@ class PlaceStore {
       errorMessage.value = null;
 
       try {
-        final data = normalizedQuery.isEmpty
-            ? await repository.getPlaces()
-            : await repository.searchPlaces(normalizedQuery);
-        places.value = data;
+        final result = await repository.getPlacesPage(
+          page: 1,
+          query: normalizedQuery,
+        );
+        places.value = result.places;
+        _currentPlacesPage = result.currentPage;
+        _lastPlacesPage = result.lastPage;
+        hasMorePlaces.value = result.hasMore;
         _lastPlacesQuery = normalizedQuery;
         _lastPlacesFetchedAt = DateTime.now();
       } catch (e) {
         errorMessage.value = _buildLoadPlacesErrorMessage(e);
+        hasMorePlaces.value = false;
       } finally {
         isPlacesLoading.value = false;
         _placesRequestInFlight = null;
@@ -89,6 +99,53 @@ class PlaceStore {
     }();
 
     _placesRequestInFlight = task;
+    return task;
+  }
+
+  Future<void> loadMorePlaces({String query = ''}) async {
+    if (_repository == null) await init();
+    final repository = _repository;
+    if (repository == null) return;
+
+    final normalizedQuery = query.trim();
+    if (isPlacesLoading.value || isPlacesLoadingMore.value) return;
+    if (_placesLoadMoreInFlight != null) return _placesLoadMoreInFlight!;
+    if (!hasMorePlaces.value) return;
+    if (normalizedQuery != _lastPlacesQuery) return;
+
+    final nextPage = _currentPlacesPage + 1;
+    if (nextPage > _lastPlacesPage) {
+      hasMorePlaces.value = false;
+      return;
+    }
+
+    final task = () async {
+      isPlacesLoadingMore.value = true;
+      try {
+        final result = await repository.getPlacesPage(
+          page: nextPage,
+          query: normalizedQuery,
+        );
+        final current = places.value;
+        final merged = <PlaceEntity>[...current, ...result.places];
+        // Avoid duplicates in case the API repeats items between pages.
+        final deduped = <String, PlaceEntity>{};
+        for (final place in merged) {
+          deduped[place.id] = place;
+        }
+        places.value = deduped.values.toList();
+        _currentPlacesPage = result.currentPage;
+        _lastPlacesPage = result.lastPage;
+        hasMorePlaces.value = result.hasMore;
+      } catch (e) {
+        errorMessage.value = _buildLoadPlacesErrorMessage(e);
+      } finally {
+        isPlacesLoadingMore.value = false;
+        _placesLoadMoreInFlight = null;
+      }
+    }();
+
+    _placesLoadMoreInFlight = task;
     return task;
   }
 

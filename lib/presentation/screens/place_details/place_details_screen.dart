@@ -350,19 +350,33 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 const SizedBox(height: 18),
                 const _SectionTitle('Prix'),
                 _SectionCard(
-                  child: Column(
-                    children: place.prices
-                        .map(
-                          (price) => _DetailRow(
-                            icon: Icons.sell_outlined,
-                            label: price.label,
-                            value:
-                                '${price.price ?? '-'} ${price.currency ?? ''}'
-                                    .trim(),
-                            subtitle: price.description,
-                          ),
-                        )
-                        .toList(),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final itemWidth = (constraints.maxWidth - 10) / 2;
+                      return Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: List.generate(place.prices.length, (index) {
+                          final price = place.prices[index];
+                          final isLast = index == place.prices.length - 1;
+                          final isOdd = place.prices.length.isOdd;
+                          final shouldUseFullWidth = isOdd && isLast;
+                          return SizedBox(
+                            width: shouldUseFullWidth
+                                ? constraints.maxWidth
+                                : itemWidth,
+                            child: _DetailGridItem(
+                              icon: Icons.sell_outlined,
+                              label: price.label,
+                              value:
+                                  '${price.price ?? '-'} ${price.currency ?? ''}'
+                                      .trim(),
+                              fullWidth: true,
+                            ),
+                          );
+                        }),
+                      );
+                    },
                   ),
                 ),
               ],
