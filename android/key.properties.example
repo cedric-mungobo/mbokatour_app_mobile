@@ -1,0 +1,5 @@
+storePassword=VOTRE_MOT_DE_PASSE_KEYSTORE
+keyPassword=VOTRE_MOT_DE_PASSE_CLE
+keyAlias=mbokatour
+storeFile=/Users/VOTRE_NOM_UTILISATEUR/mbokatour-release-key.jks
+
