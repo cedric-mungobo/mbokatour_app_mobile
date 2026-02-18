@@ -6,11 +6,13 @@ import '../../domain/entities/place_entity.dart';
 class PlaceCard extends StatelessWidget {
   final PlaceEntity place;
   final VoidCallback onTap;
+  final double aspectRatio;
 
   const PlaceCard({
     super.key,
     required this.place,
     required this.onTap,
+    this.aspectRatio = 1,
   });
 
   @override
@@ -19,114 +21,117 @@ class PlaceCard extends StatelessWidget {
     final hasImage = place.imageUrl != null && place.imageUrl!.isNotEmpty;
     final hasVideo = place.videoUrl != null && place.videoUrl!.isNotEmpty;
 
-    return InkWell(
-      onTap: onTap,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          hasVideo
-              ? _AutoPlayVideoBackground(videoUrl: place.videoUrl!)
-              : hasImage
-              ? Image.network(
-                  place.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    decoration: BoxDecoration(
+    return AspectRatio(
+      aspectRatio: aspectRatio,
+      child: InkWell(
+        onTap: onTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            hasVideo
+                ? _AutoPlayVideoBackground(videoUrl: place.videoUrl!)
+                : hasImage
+                ? Image.network(
+                    place.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [const Color(0xFF1B1B1B), Colors.grey.shade900],
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.photo, size: 48, color: Colors.white70),
+                      ),
+                    ),
+                  )
+                : Container(
+                    decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [const Color(0xFF1B1B1B), Colors.grey.shade900],
+                        colors: [Color(0xFF223047), Color(0xFF3D4E2F)],
                       ),
                     ),
-                    child: const Center(
-                      child: Icon(Icons.photo, size: 48, color: Colors.white70),
-                    ),
-                  ),
-                )
-              : Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF223047), Color(0xFF3D4E2F)],
-                    ),
-                  ),
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.place,
-                            size: 34,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            place.name,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.place,
+                              size: 34,
                               color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            Text(
+                              place.name,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-          if (hasImage || hasVideo)
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.90),
-                      Colors.black.withValues(alpha: 0.40),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.50, 1.0],
+            if (hasImage || hasVideo)
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.90),
+                        Colors.black.withValues(alpha: 0.40),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.50, 1.0],
+                    ),
                   ),
                 ),
               ),
-            ),
-          Positioned(
-            left: 14,
-            right: 14,
-            bottom: 12,
-            child: Row(
-              children: [
-                if (place.hasVideo) ...[
-                  const Icon(
-                    Icons.videocam_outlined,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 0.8,
-                      fontWeight: FontWeight.w600,
+            Positioned(
+              left: 14,
+              right: 14,
+              bottom: 12,
+              child: Row(
+                children: [
+                  if (place.hasVideo) ...[
+                    const Icon(
+                      Icons.videocam_outlined,
+                      size: 14,
                       color: Colors.white,
                     ),
+                    const SizedBox(width: 6),
+                  ],
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 0.8,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/notification_service.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import '../../../core/stores/place_store.dart';
+import '../../../domain/entities/place_entity.dart';
 import '../../widgets/place_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -85,23 +86,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Center(child: Text('Aucun lieu trouvé')),
                         )
                       else
-                        StaggeredGrid.count(
+                        MasonryGridView.count(
                           crossAxisCount: 2,
                           mainAxisSpacing: 0,
                           crossAxisSpacing: 0,
-                          children: List.generate(places.length, (index) {
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: places.length,
+                          itemBuilder: (context, index) {
                             final place = places[index];
-                            final config = _tileConfig(index);
-
-                            return StaggeredGridTile.count(
-                              crossAxisCellCount: config.crossAxisCellCount,
-                              mainAxisCellCount: config.mainAxisCellCount,
-                              child: PlaceCard(
-                                place: place,
-                                onTap: () => context.go('/place/${place.id}'),
-                              ),
+                            return PlaceCard(
+                              place: place,
+                              aspectRatio: _resolveAspectRatio(place),
+                              onTap: () => context.go('/place/${place.id}'),
                             );
-                          }),
+                          },
                         ),
                     ],
                   ),
@@ -123,27 +122,30 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  _TileConfig _tileConfig(int index) {
-    switch (index % 11) {
-      case 0:
-        return const _TileConfig(1, 2); // tall
-      case 3:
-        return const _TileConfig(2, 1); // wide
-      case 5:
-        return const _TileConfig(1, 2); // tall
-      case 8:
-        return const _TileConfig(1, 2); // tall
-      default:
-        return const _TileConfig(1, 1);
+  double _resolveAspectRatio(PlaceEntity place) {
+    final primaryUrl = place.videoUrl ?? place.imageUrl;
+    final fromUrl = _extractRatioFromUrl(primaryUrl);
+    if (fromUrl != null) {
+      return fromUrl.clamp(0.65, 1.55);
     }
+
+    final seed = place.id.toString().codeUnits.fold<int>(0, (a, b) => a + b);
+    final variants = place.hasVideo
+        ? [0.80, 0.95, 1.10, 1.25]
+        : [0.72, 0.88, 1.00, 1.20, 1.35];
+    return variants[seed % variants.length];
   }
-}
 
-class _TileConfig {
-  final int crossAxisCellCount;
-  final double mainAxisCellCount;
+  double? _extractRatioFromUrl(String? url) {
+    if (url == null || url.isEmpty) return null;
+    final match = RegExp(r'(\d{2,5})x(\d{2,5})').firstMatch(url);
+    if (match == null) return null;
 
-  const _TileConfig(this.crossAxisCellCount, this.mainAxisCellCount);
+    final width = double.tryParse(match.group(1)!);
+    final height = double.tryParse(match.group(2)!);
+    if (width == null || height == null || height == 0) return null;
+    return width / height;
+  }
 }
 
 class _BottomSearchBar extends StatefulWidget {
