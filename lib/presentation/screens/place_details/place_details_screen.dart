@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import '../../../core/services/media_settings_service.dart';
@@ -51,9 +52,44 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     );
   }
 
-  int _resolvePrimaryMediaIndex(List<PlaceMedia> media) {
-    final primaryIndex = media.indexWhere((item) => item.isPrimary);
-    return primaryIndex >= 0 ? primaryIndex : 0;
+  bool _hasText(String? value) => value != null && value.trim().isNotEmpty;
+
+  Future<void> _launchExternalUri(
+    String uriString,
+    String failureMessage,
+  ) async {
+    final uri = Uri.tryParse(uriString);
+    if (uri == null) {
+      if (mounted) NotificationService.warning(context, failureMessage);
+      return;
+    }
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && mounted) {
+      NotificationService.warning(context, failureMessage);
+    }
+  }
+
+  Future<void> _openPhone(String value) async {
+    final cleaned = value.replaceAll(RegExp(r'\s+'), '');
+    await _launchExternalUri(
+      'tel:$cleaned',
+      'Impossible d’ouvrir le téléphone',
+    );
+  }
+
+  Future<void> _openWhatsApp(String value) async {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    await _launchExternalUri(
+      'https://wa.me/$digits',
+      'Impossible d’ouvrir WhatsApp',
+    );
+  }
+
+  Future<void> _openWebsite(String value) async {
+    final url = value.startsWith('http://') || value.startsWith('https://')
+        ? value
+        : 'https://$value';
+    await _launchExternalUri(url, 'Impossible d’ouvrir le site web');
   }
 
   @override
@@ -78,242 +114,535 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         );
       }
 
+      final hasCity = _hasText(place.city);
+      final hasCommune = _hasText(place.commune);
+      final hasAddress = _hasText(place.address);
+      final hasDistance = place.distance != null;
+      final hasLocationSection =
+          hasCity || hasCommune || hasAddress || hasDistance;
+
+      final hasPhone = _hasText(place.phone);
+      final hasWhatsapp = _hasText(place.whatsapp);
+      final hasWebsite = _hasText(place.website);
+      final hasContactsSection = hasPhone || hasWhatsapp || hasWebsite;
+
+      final openingEntries = place.openingHours.entries
+          .where((e) => _hasText(e.key) && _hasText(e.value))
+          .toList();
+
       return Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            // AppBar avec image
-            SliverAppBar(
-              expandedHeight: 300,
-              pinned: true,
-              leading: IconButton(
-                icon: const CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.arrow_back, color: Colors.black),
+        appBar: AppBar(
+          title: const Text('Détail du lieu'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/home'),
+          ),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(10.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (place.media.isNotEmpty) ...[
+                _MediaBentoGrid(
+                  media: place.media,
+                  onTapMedia: (index) => _openMediaViewer(index, place.media),
                 ),
-                onPressed: () => context.go('/home'),
-              ),
-              flexibleSpace: FlexibleSpaceBar(
-                background: GestureDetector(
-                  onTap: place.media.isNotEmpty
-                      ? () => _openMediaViewer(
-                          _resolvePrimaryMediaIndex(place.media),
-                          place.media,
-                        )
-                      : null,
-                  child: _HeroMedia(place: place),
-                ),
-              ),
-            ),
-
-            // Contenu
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Titre et note
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            place.name,
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        if (place.rating != null) ...[
-                          const Icon(Icons.star, color: Colors.amber, size: 28),
-                          const SizedBox(width: 4),
-                          Text(
-                            place.rating!.toStringAsFixed(1),
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Catégorie
-                    if (place.category != null)
-                      Chip(
-                        label: Text(place.category!),
-                        backgroundColor: Colors.blue[50],
-                        labelStyle: const TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-
-                    const SizedBox(height: 24),
-
-                    // Adresse
-                    if (place.address != null) ...[
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on, color: Colors.grey),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              place.address!,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    if (place.media.isNotEmpty) ...[
-                      const Text(
-                        'Médias',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 120,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: place.media.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(width: 10),
-                          itemBuilder: (context, index) {
-                            final media = place.media[index];
-                            return _MediaPreview(
-                              media: media,
-                              onTap: () => _openMediaViewer(index, place.media),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    // Description
-                    const Text(
-                      'Description',
-                      style: TextStyle(
-                        fontSize: 20,
+                const SizedBox(height: 24),
+              ],
+              // Titre et note
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      place.name,
+                      style: const TextStyle(
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      place.description,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[700],
-                        height: 1.5,
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Bouton d'action
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          // TODO: Ouvrir dans Google Maps
-                          NotificationService.info(
-                            context,
-                            'Ouverture dans Google Maps...',
-                          );
-                        },
-                        icon: const Icon(Icons.directions),
-                        label: const Text('Obtenir l\'itinéraire'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                  ),
+                  if (place.rating != null) ...[
+                    const Icon(Icons.star, color: Colors.amber, size: 28),
+                    const SizedBox(width: 4),
+                    Row(
+                      children: [
+                        Text(
+                          place.rating!.toStringAsFixed(1),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+
+              const SizedBox(height: 5),
+
+              if (place.categories.isNotEmpty) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: place.categories
+                      .map((name) => Chip(label: Text(name)))
+                      .toList(),
+                ),
+                const SizedBox(height: 5),
+              ],
+
+              const SizedBox(height: 2),
+
+              if (hasLocationSection) ...[
+                const _SectionTitle('Localisation'),
+                _SectionCard(
+                  child: Column(
+                    children: [
+                      if (hasCity && hasCommune)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _DetailGridItem(
+                                icon: Icons.location_city_outlined,
+                                label: 'Ville',
+                                value: place.city!,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _DetailGridItem(
+                                icon: Icons.apartment_outlined,
+                                label: 'Commune',
+                                value: place.commune!,
+                              ),
+                            ),
+                          ],
+                        )
+                      else if (hasCity)
+                        _DetailGridItem(
+                          icon: Icons.location_city_outlined,
+                          label: 'Ville',
+                          value: place.city!,
+                          fullWidth: true,
+                        )
+                      else if (hasCommune)
+                        _DetailGridItem(
+                          icon: Icons.apartment_outlined,
+                          label: 'Commune',
+                          value: place.commune!,
+                          fullWidth: true,
+                        ),
+                      if (hasAddress) ...[
+                        const SizedBox(height: 10),
+                        _DetailGridItem(
+                          icon: Icons.location_on_outlined,
+                          label: 'Adresse',
+                          value: place.address!,
+                          fullWidth: true,
+                        ),
+                      ],
+                      if (hasDistance) ...[
+                        const SizedBox(height: 10),
+                        _DetailGridItem(
+                          icon: Icons.social_distance_outlined,
+                          label: 'Distance',
+                          value: '${place.distance} km',
+                          fullWidth: true,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+
+              const _SectionTitle('Description'),
+              const SizedBox(height: 1),
+              _SectionCard(
+                child: Text(
+                  place.description.isNotEmpty
+                      ? place.description
+                      : 'Aucune description',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                    height: 1.5,
+                  ),
+                ),
+              ),
+
+              if (hasContactsSection) ...[
+                const SizedBox(height: 18),
+                const _SectionTitle('Contacts'),
+                _SectionCard(
+                  child: Column(
+                    children: [
+                      if (hasPhone && hasWhatsapp)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _DetailGridItem(
+                                icon: Icons.phone_outlined,
+                                label: 'Téléphone',
+                                value: place.phone!,
+                                onTap: () => _openPhone(place.phone!),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _DetailGridItem(
+                                icon: Icons.chat_outlined,
+                                label: 'WhatsApp',
+                                value: place.whatsapp!,
+                                onTap: () => _openWhatsApp(place.whatsapp!),
+                              ),
+                            ),
+                          ],
+                        )
+                      else if (hasPhone)
+                        _DetailGridItem(
+                          icon: Icons.phone_outlined,
+                          label: 'Téléphone',
+                          value: place.phone!,
+                          fullWidth: true,
+                          onTap: () => _openPhone(place.phone!),
+                        )
+                      else if (hasWhatsapp)
+                        _DetailGridItem(
+                          icon: Icons.chat_outlined,
+                          label: 'WhatsApp',
+                          value: place.whatsapp!,
+                          fullWidth: true,
+                          onTap: () => _openWhatsApp(place.whatsapp!),
+                        ),
+                      if (hasWebsite) ...[
+                        const SizedBox(height: 10),
+                        _DetailGridItem(
+                          icon: Icons.language_outlined,
+                          label: 'Site web',
+                          value: place.website!,
+                          fullWidth: true,
+                          onTap: () => _openWebsite(place.website!),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+
+              if (openingEntries.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const _SectionTitle('Horaires'),
+                _SectionCard(
+                  child: Column(
+                    children: openingEntries
+                        .map((e) => _OpeningHourRow(day: e.key, hours: e.value))
+                        .toList(),
+                  ),
+                ),
+              ],
+
+              if (place.prices.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const _SectionTitle('Prix'),
+                _SectionCard(
+                  child: Column(
+                    children: place.prices
+                        .map(
+                          (price) => _DetailRow(
+                            icon: Icons.sell_outlined,
+                            label: price.label,
+                            value:
+                                '${price.price ?? '-'} ${price.currency ?? ''}'
+                                    .trim(),
+                            subtitle: price.description,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 18),
+              const _SectionTitle('Statistiques'),
+              _SectionCard(
+                child: Column(
+                  children: [
+                    _DetailRow(
+                      icon: Icons.favorite_outline,
+                      label: 'Likes',
+                      value: place.stats.likesCount.toString(),
+                    ),
+                    _DetailRow(
+                      icon: Icons.visibility_outlined,
+                      label: 'Visites',
+                      value: place.stats.visitsCount.toString(),
+                    ),
+                    _DetailRow(
+                      icon: Icons.rate_review_outlined,
+                      label: 'Avis',
+                      value: place.stats.reviewsCount.toString(),
+                    ),
+                    _DetailRow(
+                      icon: Icons.bookmark_border_outlined,
+                      label: 'Favoris',
+                      value: place.stats.favoritesCount.toString(),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 32),
+
+              // Bouton d'action
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // TODO: Ouvrir dans Google Maps
+                    NotificationService.info(
+                      context,
+                      'Ouverture dans Google Maps...',
+                    );
+                  },
+                  icon: const Icon(Icons.directions),
+                  label: const Text('Obtenir l\'itinéraire'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     });
   }
 }
 
-class _HeroMedia extends StatelessWidget {
-  final PlaceEntity place;
+class _SectionTitle extends StatelessWidget {
+  final String text;
 
-  const _HeroMedia({required this.place});
+  const _SectionTitle(this.text);
 
   @override
   Widget build(BuildContext context) {
-    return Watch((context) {
-      final isMuted = MediaSettingsService.isMuted.value;
-      final primary = _resolvePrimary(place.media);
-      if (primary != null) {
-        if (primary.canPlayVideo) {
-          return _InlineAutoPlayVideo(
-            url: primary.url,
-            isMuted: isMuted,
-            fit: BoxFit.cover,
-          );
-        }
-        return CachedNetworkImage(
-          imageUrl: primary.url,
-          fit: BoxFit.cover,
-          errorWidget: (context, url, error) {
-            return _buildFallback();
-          },
-        );
-      }
-
-      if (place.imageUrl != null) {
-        return CachedNetworkImage(
-          imageUrl: place.imageUrl!,
-          fit: BoxFit.cover,
-          errorWidget: (context, url, error) {
-            return _buildFallback();
-          },
-        );
-      }
-
-      if (place.videoUrl != null) {
-        return _InlineAutoPlayVideo(
-          url: place.videoUrl!,
-          isMuted: isMuted,
-          fit: BoxFit.cover,
-        );
-      }
-
-      return _buildFallback();
-    });
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 19,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.2,
+      ),
+    );
   }
+}
 
-  PlaceMedia? _resolvePrimary(List<PlaceMedia> media) {
-    if (media.isEmpty) return null;
-    final index = media.indexWhere((item) => item.isPrimary);
-    return index >= 0 ? media[index] : media.first;
-  }
+class _SectionCard extends StatelessWidget {
+  final Widget child;
 
-  Widget _buildFallback() {
+  const _SectionCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      color: Colors.grey[300],
-      child: const Icon(Icons.place, size: 100),
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? subtitle;
+
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 16, color: Colors.grey.shade700),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailGridItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool fullWidth;
+  final VoidCallback? onTap;
+
+  const _DetailGridItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.fullWidth = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 14, color: Colors.grey.shade700),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (onTap != null)
+                  const Icon(
+                    Icons.open_in_new,
+                    size: 14,
+                    color: Colors.black45,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              maxLines: fullWidth ? 3 : 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OpeningHourRow extends StatelessWidget {
+  final String day;
+  final String hours;
+
+  const _OpeningHourRow({required this.day, required this.hours});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(Icons.schedule_outlined, size: 16, color: Colors.grey.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              day,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.grey.shade800,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            hours,
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -321,8 +650,13 @@ class _HeroMedia extends StatelessWidget {
 class _MediaPreview extends StatelessWidget {
   final PlaceMedia media;
   final VoidCallback onTap;
+  final int? remainingCount;
 
-  const _MediaPreview({required this.media, required this.onTap});
+  const _MediaPreview({
+    required this.media,
+    required this.onTap,
+    this.remainingCount,
+  });
 
   bool get _canRenderAsImage {
     final lower = media.url.toLowerCase();
@@ -340,7 +674,7 @@ class _MediaPreview extends StatelessWidget {
     return Watch((context) {
       final isMuted = MediaSettingsService.isMuted.value;
       return SizedBox(
-        width: 160,
+        width: double.infinity,
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
@@ -410,6 +744,21 @@ class _MediaPreview extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (remainingCount != null && remainingCount! > 0)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '+$remainingCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -417,6 +766,78 @@ class _MediaPreview extends StatelessWidget {
         ),
       );
     });
+  }
+}
+
+class _MediaBentoGrid extends StatelessWidget {
+  final List<PlaceMedia> media;
+  final ValueChanged<int> onTapMedia;
+
+  const _MediaBentoGrid({required this.media, required this.onTapMedia});
+
+  @override
+  Widget build(BuildContext context) {
+    if (media.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    if (media.length == 1) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: _MediaPreview(media: media[0], onTap: () => onTapMedia(0)),
+      );
+    }
+
+    if (media.length == 2) {
+      return AspectRatio(
+        aspectRatio: 2.1,
+        child: Row(
+          children: [
+            Expanded(
+              child: _MediaPreview(media: media[0], onTap: () => onTapMedia(0)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _MediaPreview(media: media[1], onTap: () => onTapMedia(1)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final remaining = media.length - 3;
+    return AspectRatio(
+      aspectRatio: 1.35,
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: _MediaPreview(media: media[0], onTap: () => onTapMedia(0)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: _MediaPreview(
+                    media: media[1],
+                    onTap: () => onTapMedia(1),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: _MediaPreview(
+                    media: media[2],
+                    remainingCount: remaining > 0 ? remaining : null,
+                    onTap: () => onTapMedia(2),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -441,6 +862,17 @@ class _InlineAutoPlayVideoState extends State<_InlineAutoPlayVideo> {
   bool _failed = false;
   bool _visible = false;
   bool _initializing = false;
+  bool _isDisposed = false;
+
+  Future<void> _disposeController(VideoPlayerController? controller) async {
+    if (controller == null) return;
+    try {
+      await controller.pause();
+    } catch (_) {}
+    try {
+      await controller.dispose();
+    } catch (_) {}
+  }
 
   @override
   void initState() {
@@ -449,7 +881,7 @@ class _InlineAutoPlayVideoState extends State<_InlineAutoPlayVideo> {
   }
 
   Future<void> _initIfNeeded() async {
-    if (_initializing || _ready || _failed) return;
+    if (_isDisposed || _initializing || _ready || _failed) return;
     _initializing = true;
     try {
       final controller = VideoPlayerController.networkUrl(
@@ -458,8 +890,8 @@ class _InlineAutoPlayVideoState extends State<_InlineAutoPlayVideo> {
       await controller.initialize();
       await controller.setLooping(true);
       await controller.setVolume(widget.isMuted ? 0 : 1);
-      if (!mounted) {
-        await controller.dispose();
+      if (!mounted || _isDisposed) {
+        await _disposeController(controller);
         return;
       }
       setState(() {
@@ -481,25 +913,39 @@ class _InlineAutoPlayVideoState extends State<_InlineAutoPlayVideo> {
   @override
   void didUpdateWidget(covariant _InlineAutoPlayVideo oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (_isDisposed) return;
     if (oldWidget.isMuted != widget.isMuted) {
-      _controller?.setVolume(widget.isMuted ? 0 : 1);
+      final controller = _controller;
+      if (controller != null) {
+        controller.setVolume(widget.isMuted ? 0 : 1);
+      }
     }
   }
 
   Future<void> _onVisibilityChanged(VisibilityInfo info) async {
+    if (_isDisposed) return;
     final visible = info.visibleFraction > 0.55;
     _visible = visible;
     if (visible) {
       await _initIfNeeded();
-      await _controller?.play();
+      final controller = _controller;
+      if (controller != null && !_isDisposed) {
+        await controller.play();
+      }
     } else {
-      await _controller?.pause();
+      final controller = _controller;
+      if (controller != null && !_isDisposed) {
+        await controller.pause();
+      }
     }
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _isDisposed = true;
+    final controller = _controller;
+    _controller = null;
+    _disposeController(controller);
     super.dispose();
   }
 
@@ -660,6 +1106,17 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
   bool _loading = true;
   bool _hasError = false;
   bool _isPlaying = false;
+  bool _isDisposed = false;
+
+  Future<void> _disposeController(VideoPlayerController? controller) async {
+    if (controller == null) return;
+    try {
+      await controller.pause();
+    } catch (_) {}
+    try {
+      await controller.dispose();
+    } catch (_) {}
+  }
 
   @override
   void initState() {
@@ -677,8 +1134,8 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
       await controller.setVolume(widget.isMuted ? 0 : 1);
       await controller.play();
 
-      if (!mounted) {
-        await controller.dispose();
+      if (!mounted || _isDisposed) {
+        await _disposeController(controller);
         return;
       }
       controller.addListener(_syncPlayingState);
@@ -699,16 +1156,23 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _controller?.removeListener(_syncPlayingState);
-    _controller?.dispose();
+    final controller = _controller;
+    _controller = null;
+    _disposeController(controller);
     super.dispose();
   }
 
   @override
   void didUpdateWidget(covariant _FullscreenVideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (_isDisposed) return;
     if (oldWidget.isMuted != widget.isMuted) {
-      _controller?.setVolume(widget.isMuted ? 0 : 1);
+      final controller = _controller;
+      if (controller != null) {
+        controller.setVolume(widget.isMuted ? 0 : 1);
+      }
     }
   }
 
@@ -721,7 +1185,7 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
 
   void _togglePlayPause() {
     final controller = _controller;
-    if (controller == null) return;
+    if (controller == null || _isDisposed) return;
     if (controller.value.isPlaying) {
       controller.pause();
     } else {

@@ -27,6 +27,9 @@ class PlaceRepositoryImpl {
         debugPrint('PLACE GET_BY_ID => id=$id');
       }
       final response = await _dioService.get('${ApiConstants.places}/$id');
+      if (kDebugMode) {
+        _logChunks('PLACE GET_BY_ID RESPONSE', response.data);
+      }
       final place = PlaceModel.fromJson(_extractPlace(response.data));
       if (kDebugMode) {
         debugPrint(
@@ -80,5 +83,14 @@ class PlaceRepositoryImpl {
     }
 
     throw Exception('Lieu introuvable dans la réponse API');
+  }
+
+  void _logChunks(String label, dynamic payload) {
+    final text = payload?.toString() ?? 'null';
+    const chunkSize = 700;
+    for (var i = 0; i < text.length; i += chunkSize) {
+      final end = (i + chunkSize < text.length) ? i + chunkSize : text.length;
+      debugPrint('$label [${(i ~/ chunkSize) + 1}]: ${text.substring(i, end)}');
+    }
   }
 }

@@ -4,14 +4,30 @@ class PlaceModel extends PlaceEntity {
   const PlaceModel({
     required super.id,
     required super.name,
+    super.slug,
     required super.description,
     super.imageUrl,
     super.videoUrl,
     super.latitude,
     super.longitude,
     super.address,
+    super.city,
+    super.commune,
+    super.phone,
+    super.whatsapp,
+    super.website,
+    super.openingHours = const {},
     super.rating,
     super.category,
+    super.categories = const [],
+    super.isActive = true,
+    super.isVerified = false,
+    super.isRecommended = false,
+    super.prices = const [],
+    super.stats = const PlaceStats(),
+    super.distance,
+    super.createdAt,
+    super.updatedAt,
     super.hasVideo = false,
     super.media = const [],
   });
@@ -33,17 +49,14 @@ class PlaceModel extends PlaceEntity {
       videoUrl = null;
     }
 
+    final categoryNames = _extractCategoryNames(categories);
     String? category = json['category'] as String?;
-    if (category == null && categories is List && categories.isNotEmpty) {
-      final firstCategory = categories.first;
-      if (firstCategory is Map<String, dynamic>) {
-        category = firstCategory['name'] as String?;
-      }
-    }
+    category ??= categoryNames.isNotEmpty ? categoryNames.first : null;
 
     return PlaceModel(
       id: json['id'].toString(),
       name: json['name'] as String,
+      slug: _asString(json['slug']),
       description: (json['description'] as String?) ?? '',
       imageUrl: imageUrl,
       videoUrl: videoUrl,
@@ -59,12 +72,27 @@ class PlaceModel extends PlaceEntity {
           ? (json['longitude'] as num).toDouble()
           : null,
       address: json['address'] as String?,
+      city: _asString(json['ville']) ?? _asString(json['city']),
+      commune: _asString(json['commune']),
+      phone: _asString(json['phone']),
+      whatsapp: _asString(json['whatsapp']),
+      website: _asString(json['website']),
+      openingHours: _extractOpeningHours(json['opening_hours']),
       rating: json['rating'] != null
           ? (json['rating'] as num).toDouble()
           : json['average_rating'] != null
           ? (json['average_rating'] as num).toDouble()
           : null,
       category: category,
+      categories: categoryNames,
+      isActive: json['is_active'] == true,
+      isVerified: json['is_verified'] == true,
+      isRecommended: json['is_recommended'] == true,
+      prices: _extractPrices(json['prices']),
+      stats: _extractStats(json['stats']),
+      distance: _asDouble(json['distance']),
+      createdAt: _asDateTime(json['created_at']),
+      updatedAt: _asDateTime(json['updated_at']),
       media: media,
     );
   }
@@ -119,10 +147,85 @@ class PlaceModel extends PlaceEntity {
         _asString(item['thumbnail_url']);
   }
 
+  static List<String> _extractCategoryNames(dynamic rawCategories) {
+    if (rawCategories is! List) return const [];
+    final names = <String>[];
+    for (final category in rawCategories) {
+      if (category is! Map) continue;
+      final map = Map<String, dynamic>.from(category);
+      final name = _asString(map['name']);
+      if (name != null) {
+        names.add(name);
+      }
+    }
+    return names;
+  }
+
+  static Map<String, String> _extractOpeningHours(dynamic rawOpeningHours) {
+    if (rawOpeningHours is! Map) return const {};
+    final map = <String, String>{};
+    rawOpeningHours.forEach((key, value) {
+      final hour = _asString(value);
+      if (hour != null) {
+        map[key.toString()] = hour;
+      }
+    });
+    return map;
+  }
+
+  static List<PlacePrice> _extractPrices(dynamic rawPrices) {
+    if (rawPrices is! List) return const [];
+    final output = <PlacePrice>[];
+    for (final item in rawPrices) {
+      if (item is! Map) continue;
+      final map = Map<String, dynamic>.from(item);
+      output.add(
+        PlacePrice(
+          id: map['id'].toString(),
+          label: _asString(map['label']) ?? 'Tarif',
+          price: _asString(map['price']),
+          currency: _asString(map['currency']),
+          description: _asString(map['description']),
+        ),
+      );
+    }
+    return output;
+  }
+
+  static PlaceStats _extractStats(dynamic rawStats) {
+    if (rawStats is! Map) return const PlaceStats();
+    final map = Map<String, dynamic>.from(rawStats);
+    return PlaceStats(
+      likesCount: _asInt(map['likes_count']),
+      visitsCount: _asInt(map['visits_count']),
+      reviewsCount: _asInt(map['reviews_count']),
+      favoritesCount: _asInt(map['favorites_count']),
+    );
+  }
+
   static String? _asString(dynamic value) {
     if (value == null) return null;
     final raw = value.toString().trim();
     return raw.isEmpty ? null : raw;
+  }
+
+  static int _asInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  static double? _asDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
+  }
+
+  static DateTime? _asDateTime(dynamic value) {
+    final text = _asString(value);
+    if (text == null) return null;
+    return DateTime.tryParse(text);
   }
 
   static bool _isLikelyImageUrl(String value) {

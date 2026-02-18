@@ -173,14 +173,26 @@ class _AutoPlayVideoBackgroundState extends State<_AutoPlayVideoBackground> {
   bool _isFailed = false;
   bool _isInitializing = false;
   bool _isVisible = false;
+  bool _isDisposed = false;
+
+  Future<void> _disposeController(VideoPlayerController? controller) async {
+    if (controller == null) return;
+    try {
+      await controller.pause();
+    } catch (_) {}
+    try {
+      await controller.dispose();
+    } catch (_) {}
+  }
 
   void _attachErrorListener(VideoPlayerController controller) {
-    controller.addListener(() async {
-      final value = controller.value;
-      if (!mounted || !value.hasError) return;
+    controller.addListener(() {
+      if (_isDisposed || !mounted) return;
+      if (!identical(_controller, controller)) return;
 
-      await controller.pause();
-      await controller.dispose();
+      final value = controller.value;
+      if (!value.hasError) return;
+
       if (mounted) {
         setState(() {
           _controller = null;
@@ -188,11 +200,12 @@ class _AutoPlayVideoBackgroundState extends State<_AutoPlayVideoBackground> {
           _isFailed = true;
         });
       }
+      _disposeController(controller);
     });
   }
 
   Future<void> _initVideo() async {
-    if (_isInitializing || _isReady || _isFailed) return;
+    if (_isDisposed || _isInitializing || _isReady || _isFailed) return;
     _isInitializing = true;
 
     try {
@@ -202,12 +215,13 @@ class _AutoPlayVideoBackgroundState extends State<_AutoPlayVideoBackground> {
       await controller.initialize();
       await controller.setLooping(true);
       await controller.setVolume(widget.isMuted ? 0 : 1);
-      _attachErrorListener(controller);
 
-      if (!mounted) {
-        await controller.dispose();
+      if (_isDisposed || !mounted) {
+        await _disposeController(controller);
         return;
       }
+
+      _attachErrorListener(controller);
 
       setState(() {
         _controller = controller;
@@ -230,6 +244,7 @@ class _AutoPlayVideoBackgroundState extends State<_AutoPlayVideoBackground> {
   }
 
   Future<void> _onVisibilityChanged(VisibilityInfo info) async {
+    if (_isDisposed) return;
     final visible = info.visibleFraction > 0.6;
     _isVisible = visible;
 
@@ -237,24 +252,37 @@ class _AutoPlayVideoBackgroundState extends State<_AutoPlayVideoBackground> {
       if (!_isReady) {
         await _initVideo();
       } else {
-        await _controller?.play();
+        final controller = _controller;
+        if (controller != null && !_isDisposed) {
+          await controller.play();
+        }
       }
     } else {
-      await _controller?.pause();
+      final controller = _controller;
+      if (controller != null && !_isDisposed) {
+        await controller.pause();
+      }
     }
   }
 
   @override
   void didUpdateWidget(covariant _AutoPlayVideoBackground oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (_isDisposed) return;
     if (oldWidget.isMuted != widget.isMuted) {
-      _controller?.setVolume(widget.isMuted ? 0 : 1);
+      final controller = _controller;
+      if (controller != null) {
+        controller.setVolume(widget.isMuted ? 0 : 1);
+      }
     }
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _isDisposed = true;
+    final controller = _controller;
+    _controller = null;
+    _disposeController(controller);
     super.dispose();
   }
 
