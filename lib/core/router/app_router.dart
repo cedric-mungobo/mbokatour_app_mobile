@@ -3,29 +3,21 @@ import '../../presentation/screens/welcome/welcome_screen.dart';
 import '../../presentation/screens/login/login_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/place_details/place_details_screen.dart';
+import '../../presentation/screens/profile/profile_screen.dart';
 
 class AppRouter {
   static GoRouter router = GoRouter(
     initialLocation: '/',
     routes: [
       // Welcome Screen
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const WelcomeScreen(),
-      ),
-      
+      GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
+
       // Login Screen
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
-      
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+
       // Home Screen
-      GoRoute(
-        path: '/home',
-        builder: (context, state) => const HomeScreen(),
-      ),
-      
+      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+
       // Place Details Screen
       GoRoute(
         path: '/place/:id',
@@ -34,7 +26,12 @@ class AppRouter {
           return PlaceDetailsScreen(placeId: placeId);
         },
       ),
+
+      // Profile Screen
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
+      ),
     ],
   );
 }
-

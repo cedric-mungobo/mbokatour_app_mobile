@@ -8,6 +8,7 @@ import '../../../core/services/notification_service.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import '../../../core/stores/place_store.dart';
 import '../../../domain/entities/place_entity.dart';
+import '../../widgets/bored_bottom_sheet.dart';
 import '../../widgets/place_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -56,6 +57,21 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onSearchChanged(String value) {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 350), _loadPlaces);
+  }
+
+  Future<void> _openBoredSheet() async {
+    final action = await showBoredBottomSheet(context);
+    if (!mounted || action == null) return;
+
+    if (action == BoredAction.nearby) {
+      NotificationService.info(context, 'Section "lieux proches" à brancher.');
+      return;
+    }
+    NotificationService.info(context, 'Section spéciale à brancher.');
+  }
+
+  void _openProfile() {
+    context.go('/profile');
   }
 
   @override
@@ -145,6 +161,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: _BottomSearchBar(
                     controller: _searchController,
                     onChanged: _onSearchChanged,
+                    onBoredTap: _openBoredSheet,
+                    onProfileTap: _openProfile,
                   ),
                 ),
               ],
@@ -184,8 +202,15 @@ class _HomeScreenState extends State<HomeScreen> {
 class _BottomSearchBar extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final VoidCallback onBoredTap;
+  final VoidCallback onProfileTap;
 
-  const _BottomSearchBar({required this.controller, required this.onChanged});
+  const _BottomSearchBar({
+    required this.controller,
+    required this.onChanged,
+    required this.onBoredTap,
+    required this.onProfileTap,
+  });
 
   @override
   State<_BottomSearchBar> createState() => _BottomSearchBarState();
@@ -214,7 +239,6 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
 
   @override
   Widget build(BuildContext context) {
-    final hasText = widget.controller.text.trim().isNotEmpty;
     final isFocused = _focusNode.hasFocus;
 
     return Container(
@@ -277,25 +301,34 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
                 ),
               ),
             ),
-            if (hasText)
-              SizedBox(
-                width: 32,
-                height: 32,
-                child: IconButton(
-                  tooltip: 'Effacer',
-                  padding: EdgeInsets.zero,
-                  onPressed: () {
-                    widget.controller.clear();
-                    widget.onChanged('');
-                    setState(() {});
-                  },
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: Colors.black54,
-                  ),
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: IconButton(
+                tooltip: 'Je m\'ennuie',
+                padding: EdgeInsets.zero,
+                onPressed: widget.onBoredTap,
+                icon: const Icon(
+                  Icons.sentiment_satisfied_alt_outlined,
+                  size: 18,
+                  color: Colors.black54,
                 ),
               ),
+            ),
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: IconButton(
+                tooltip: 'Profil',
+                padding: EdgeInsets.zero,
+                onPressed: widget.onProfileTap,
+                icon: const Icon(
+                  Icons.person_outline_rounded,
+                  size: 18,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
           ],
         ),
       ),
