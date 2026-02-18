@@ -8,6 +8,7 @@ import '../../../core/services/notification_service.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import '../../../core/stores/place_store.dart';
 import '../../../domain/entities/place_entity.dart';
+import '../../widgets/app_logo_widget.dart';
 import '../../widgets/bored_bottom_sheet.dart';
 import '../../widgets/place_card.dart';
 
@@ -72,6 +73,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openProfile() {
     context.go('/profile');
+  }
+
+  void _openContribute() {
+    context.go('/contribute');
   }
 
   @override
@@ -162,6 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     controller: _searchController,
                     onChanged: _onSearchChanged,
                     onBoredTap: _openBoredSheet,
+                    onContributeTap: _openContribute,
                     onProfileTap: _openProfile,
                   ),
                 ),
@@ -203,12 +209,14 @@ class _BottomSearchBar extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onBoredTap;
+  final VoidCallback onContributeTap;
   final VoidCallback onProfileTap;
 
   const _BottomSearchBar({
     required this.controller,
     required this.onChanged,
     required this.onBoredTap,
+    required this.onContributeTap,
     required this.onProfileTap,
   });
 
@@ -258,21 +266,7 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Row(
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.14),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.explore,
-                color: Theme.of(context).colorScheme.primary,
-                size: 18,
-              ),
-            ),
+            const AppLogoWidget(size: 50),
             const SizedBox(width: 8),
             const Icon(Icons.search, color: Colors.black45, size: 20),
             const SizedBox(width: 8),
@@ -310,6 +304,20 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
                 onPressed: widget.onBoredTap,
                 icon: const Icon(
                   Icons.sentiment_satisfied_alt_outlined,
+                  size: 18,
+                  color: Colors.black54,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: IconButton(
+                tooltip: 'Contribuer',
+                padding: EdgeInsets.zero,
+                onPressed: widget.onContributeTap,
+                icon: const Icon(
+                  Icons.add_circle_outline_rounded,
                   size: 18,
                   color: Colors.black54,
                 ),

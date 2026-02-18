@@ -4,6 +4,7 @@ import '../../presentation/screens/login/login_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/place_details/place_details_screen.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
+import '../../presentation/screens/contribute/contribute_screen.dart';
 
 class AppRouter {
   static GoRouter router = GoRouter(
@@ -31,6 +32,12 @@ class AppRouter {
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+
+      // Contribute Screen
+      GoRoute(
+        path: '/contribute',
+        builder: (context, state) => const ContributeScreen(),
       ),
     ],
   );
