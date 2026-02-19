@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_theme.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
@@ -94,6 +97,29 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     await _launchExternalUri(url, 'Impossible d’ouvrir le site web');
   }
 
+  bool _hasValidCoordinates(double? latitude, double? longitude) {
+    if (latitude == null || longitude == null) return false;
+    return latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180;
+  }
+
+  Future<void> _openDirections(PlaceEntity place) async {
+    if (!_hasValidCoordinates(place.latitude, place.longitude)) {
+      NotificationService.warning(context, 'Coordonnées indisponibles');
+      return;
+    }
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination='
+      '${place.latitude},${place.longitude}',
+    );
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && mounted) {
+      NotificationService.warning(context, 'Impossible d’ouvrir Google Maps');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
@@ -120,8 +146,11 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       final hasCommune = _hasText(place.commune);
       final hasAddress = _hasText(place.address);
       final hasDistance = place.distance != null;
-      final hasLocationSection =
-          hasCity || hasCommune || hasAddress || hasDistance;
+      final hasCoordinates = _hasValidCoordinates(
+        place.latitude,
+        place.longitude,
+      );
+      const hasLocationSection = true;
 
       final hasPhone = _hasText(place.phone);
       final hasWhatsapp = _hasText(place.whatsapp);
@@ -271,6 +300,32 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                           fullWidth: true,
                         ),
                       ],
+                      const SizedBox(height: 12),
+                      if (hasCoordinates)
+                        _MiniPlaceMap(
+                          latitude: place.latitude!,
+                          longitude: place.longitude!,
+                          onTap: () => _openDirections(place),
+                        )
+                      else
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 18,
+                            horizontal: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Coordonnées indisponibles',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -433,17 +488,11 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Ouvrir dans Google Maps
-                    NotificationService.info(
-                      context,
-                      'Ouverture dans Google Maps...',
-                    );
-                  },
+                  onPressed: () => _openDirections(place),
                   icon: const Icon(Icons.directions),
                   label: const Text('Obtenir l\'itinéraire'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
