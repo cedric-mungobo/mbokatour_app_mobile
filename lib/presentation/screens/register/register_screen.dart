@@ -61,9 +61,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'Compte créé. Vérifiez l’OTP envoyé par email.',
       );
       context.go('/otp?email=${_emailController.text.trim()}');
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      NotificationService.error(context, e.message);
     } catch (e) {
       if (!mounted) return;
-      NotificationService.error(context, 'Inscription impossible: $e');
+      NotificationService.error(context, 'Inscription impossible.');
     } finally {
       _isLoading.value = false;
     }

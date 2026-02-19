@@ -95,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      NotificationService.error(context, 'Connexion impossible: $e');
+      NotificationService.error(context, 'Connexion impossible.');
     } finally {
       _isLoading.value = false;
     }
@@ -113,61 +113,59 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       body: Watch(
         (context) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 32),
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            children: [
+              const SizedBox(height: 22),
               const Text(
                 'Connexion',
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Connectez-vous avec email ou téléphone et mot de passe.',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
+              const SizedBox(height: 8),
+              const Text(
+                'Connectez-vous avec email ou téléphone et mot de passe.',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 32),
+              TextField(
+                controller: _identifiantController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email ou téléphone',
+                  hintText: 'jean@example.com ou +243...',
+                  prefixIcon: Icon(Icons.person_outline),
                 ),
-                const SizedBox(height: 32),
-                TextField(
-                  controller: _identifiantController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email ou téléphone',
-                    hintText: 'jean@example.com ou +243...',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Mot de passe',
+                  prefixIcon: Icon(Icons.lock_outline),
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Mot de passe',
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 48,
+                child: FilledButton(
+                  onPressed: _isLoading.value ? null : _login,
+                  child: _isLoading.value
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Se connecter'),
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 48,
-                  child: FilledButton(
-                    onPressed: _isLoading.value ? null : _login,
-                    child: _isLoading.value
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Se connecter'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: _isLoading.value ? null : () => context.go('/otp'),
-                  child: const Text('Vérifier mon OTP'),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: _isLoading.value ? null : () => context.go('/otp'),
+                child: const Text('Vérifier mon OTP'),
+              ),
+            ],
           ),
         ),
       ),

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -213,8 +214,42 @@ class AuthRepositoryImpl {
       }
       // Register must not authenticate user until OTP is verified.
       await _cacheService.saveLoginStatus(false);
-    } catch (e) {
-      throw Exception('Erreur lors de l\'inscription: $e');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final validationErrors = data['errors'];
+        if (validationErrors is Map<String, dynamic>) {
+          for (final value in validationErrors.values) {
+            if (value is List && value.isNotEmpty) {
+              final message = value.first?.toString().trim();
+              if (message != null && message.isNotEmpty) {
+                throw AuthException(code: 'validation_error', message: message);
+              }
+            }
+            final message = value?.toString().trim();
+            if (message != null && message.isNotEmpty) {
+              throw AuthException(code: 'validation_error', message: message);
+            }
+          }
+        }
+
+        final message = data['message']?.toString().trim();
+        if (message != null && message.isNotEmpty) {
+          throw AuthException(code: 'validation_error', message: message);
+        }
+      }
+
+      throw const AuthException(
+        code: 'network_error',
+        message: 'Inscription impossible. Vérifiez les informations saisies.',
+      );
+    } on AuthException {
+      rethrow;
+    } catch (_) {
+      throw const AuthException(
+        code: 'unknown_error',
+        message: 'Erreur lors de l\'inscription.',
+      );
     }
   }
 
@@ -285,8 +320,51 @@ class AuthRepositoryImpl {
       await _cacheService.saveLoginStatus(true);
 
       return user;
-    } catch (e) {
-      throw Exception('Erreur lors de la connexion: $e');
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final validationErrors = data['errors'];
+        if (validationErrors is Map<String, dynamic>) {
+          for (final value in validationErrors.values) {
+            if (value is List && value.isNotEmpty) {
+              final message = value.first?.toString().trim();
+              if (message != null && message.isNotEmpty) {
+                throw AuthException(code: 'validation_error', message: message);
+              }
+            }
+            final message = value?.toString().trim();
+            if (message != null && message.isNotEmpty) {
+              throw AuthException(code: 'validation_error', message: message);
+            }
+          }
+        }
+
+        final message = data['message']?.toString().trim();
+        if (message != null && message.isNotEmpty) {
+          final lower = message.toLowerCase();
+          if (lower.contains('verify') ||
+              lower.contains('vérifi') ||
+              lower.contains('email_verified_at')) {
+            throw const AuthException(
+              code: 'email_not_verified',
+              message: 'Email non vérifié. Veuillez valider l’OTP.',
+            );
+          }
+          throw AuthException(code: 'unknown_error', message: message);
+        }
+      }
+
+      throw const AuthException(
+        code: 'network_error',
+        message: 'Connexion impossible. Vérifiez vos identifiants.',
+      );
+    } on AuthException {
+      rethrow;
+    } catch (_) {
+      throw const AuthException(
+        code: 'unknown_error',
+        message: 'Erreur lors de la connexion.',
+      );
     }
   }
 
