@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/services/cache_service.dart';
 import '../../../core/services/dio_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/repositories/auth_repository_impl.dart';
 import '../../../data/repositories/category_repository_impl.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../widgets/app_logo_widget.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -91,10 +93,16 @@ class WelcomeScreen extends StatelessWidget {
               child: Column(
                 children: [
                   const Spacer(flex: 3),
-                  const AppLogoWidget(size: 120),
-                  const SizedBox(height: 18),
-                
-                  const SizedBox(height: 10),
+                  const AppLogoWidget(size: 220)
+                      .animate()
+                      .fadeIn(duration: 900.ms, curve: Curves.easeOut)
+                      .slideY(
+                        begin: 0.08,
+                        end: 0,
+                        duration: 900.ms,
+                        curve: Curves.easeOutCubic,
+                      ),
+                  const SizedBox(height: 1),
                   const Text(
                     'Découvre la RDC, autrement.',
                     textAlign: TextAlign.center,
@@ -103,17 +111,7 @@ class WelcomeScreen extends StatelessWidget {
                       fontSize: 24,
                       fontWeight: FontWeight.w500,
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Lieux, sorties, culture et nature autour de toi.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  ).animate().fadeIn(delay: 360.ms, duration: 700.ms),
                   const SizedBox(height: 2),
                   const Text(
                     'Trouve des lieux sympas en 2 minutes.',
@@ -123,61 +121,77 @@ class WelcomeScreen extends StatelessWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
-                  ),
+                  ).animate().fadeIn(delay: 520.ms, duration: 700.ms),
                   const Spacer(flex: 4),
                   SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        
-                        backgroundColor: Colors.white.withValues(alpha: 0.6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            foregroundColor: Colors.black,
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.6,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          onPressed: () => _handleGoogleSignIn(context),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.g_mobiledata, size: 24),
+                              SizedBox(width: 8),
+                              Text(
+                                'Se connecter avec Google',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                      )
+                      .animate()
+                      .fadeIn(delay: 760.ms, duration: 620.ms)
+                      .slideY(
+                        begin: 0.05,
+                        end: 0,
+                        duration: 620.ms,
+                        curve: Curves.easeOutCubic,
                       ),
-                      onPressed: () => _handleGoogleSignIn(context),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.g_mobiledata, size: 24),
-                          SizedBox(width: 8),
-                          Text(
-                            'Se connecter avec Google',
+                  const SizedBox(height: 14),
+                  SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          onPressed: () => context.go('/login'),
+                          child: const Text(
+                            'Se connecter',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
                         ),
+                      )
+                      .animate()
+                      .fadeIn(delay: 900.ms, duration: 620.ms)
+                      .slideY(
+                        begin: 0.05,
+                        end: 0,
+                        duration: 620.ms,
+                        curve: Curves.easeOutCubic,
                       ),
-                      onPressed: () => context.go('/login'),
-                      child: const Text(
-                        'Se connecter',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 14),
-                  const SizedBox(height: 8),
                   TextButton(
                     onPressed: () => context.go('/register'),
                     child: const Text(
@@ -188,7 +202,7 @@ class WelcomeScreen extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
+                  ).animate().fadeIn(delay: 1040.ms, duration: 560.ms),
                   const SizedBox(height: 20),
                 ],
               ),
