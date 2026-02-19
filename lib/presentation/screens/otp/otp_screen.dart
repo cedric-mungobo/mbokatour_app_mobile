@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/cache_service.dart';
 import '../../../core/services/dio_service.dart';
@@ -20,8 +21,8 @@ class OtpScreen extends StatefulWidget {
 class _OtpScreenState extends State<OtpScreen> {
   late final TextEditingController _emailController;
   final _otpController = TextEditingController();
-  bool _otpSent = false;
-  bool _isLoading = false;
+  final _otpSent = signal(false);
+  final _isLoading = signal(false);
   late final Future<AuthRepositoryImpl> _repositoryFuture = _buildRepository();
   late final Future<CategoryRepositoryImpl> _categoryRepositoryFuture =
       _buildCategoryRepository();
@@ -52,6 +53,8 @@ class _OtpScreenState extends State<OtpScreen> {
   void dispose() {
     _emailController.dispose();
     _otpController.dispose();
+    _otpSent.dispose();
+    _isLoading.dispose();
     super.dispose();
   }
 
@@ -62,18 +65,18 @@ class _OtpScreenState extends State<OtpScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    _isLoading.value = true;
     try {
       final repository = await _repositoryFuture;
       await repository.sendOtpToEmail(email);
       if (!mounted) return;
-      setState(() => _otpSent = true);
+      _otpSent.value = true;
       NotificationService.success(context, 'Code OTP envoyé');
     } catch (e) {
       if (!mounted) return;
       NotificationService.error(context, 'Envoi OTP impossible: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _isLoading.value = false;
     }
   }
 
@@ -85,7 +88,7 @@ class _OtpScreenState extends State<OtpScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    _isLoading.value = true;
     try {
       final repository = await _repositoryFuture;
       await repository.verifyOtp(email, otp);
@@ -114,7 +117,7 @@ class _OtpScreenState extends State<OtpScreen> {
       if (!mounted) return;
       NotificationService.error(context, 'Vérification OTP impossible: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _isLoading.value = false;
     }
   }
 
@@ -128,63 +131,67 @@ class _OtpScreenState extends State<OtpScreen> {
           onPressed: () => context.go('/login'),
         ),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 20),
-              const Text(
-                'Valider votre email',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Entrez votre email puis le code OTP reçu.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  hintText: 'votre@email.com',
-                  prefixIcon: Icon(Icons.email_outlined),
+      body: Watch(
+        (context) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 20),
+                const Text(
+                  'Valider votre email',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _otpController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: const InputDecoration(
-                  labelText: 'Code OTP',
-                  hintText: '000000',
-                  prefixIcon: Icon(Icons.lock_outline),
+                const SizedBox(height: 8),
+                const Text(
+                  'Entrez votre email puis le code OTP reçu.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 48,
-                child: FilledButton(
-                  onPressed: _isLoading ? null : _verifyOtp,
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Vérifier le code'),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    hintText: 'votre@email.com',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: _isLoading ? null : _sendOtp,
-                child: Text(_otpSent ? 'Renvoyer le code' : 'Envoyer le code'),
-              ),
-            ],
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _otpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'Code OTP',
+                    hintText: '000000',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: _isLoading.value ? null : _verifyOtp,
+                    child: _isLoading.value
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Vérifier le code'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _isLoading.value ? null : _sendOtp,
+                  child: Text(
+                    _otpSent.value ? 'Renvoyer le code' : 'Envoyer le code',
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -243,19 +243,13 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode()..addListener(_handleFocusChanged);
+    _focusNode = FocusNode();
   }
 
   @override
   void dispose() {
-    _focusNode
-      ..removeListener(_handleFocusChanged)
-      ..dispose();
+    _focusNode.dispose();
     super.dispose();
-  }
-
-  void _handleFocusChanged() {
-    if (mounted) setState(() {});
   }
 
   @override
@@ -280,10 +274,7 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
                 controller: widget.controller,
                 focusNode: _focusNode,
                 textInputAction: TextInputAction.search,
-                onChanged: (value) {
-                  setState(() {});
-                  widget.onChanged(value);
-                },
+                onChanged: widget.onChanged,
                 onSubmitted: widget.onChanged,
                 style: const TextStyle(
                   color: Colors.black87,

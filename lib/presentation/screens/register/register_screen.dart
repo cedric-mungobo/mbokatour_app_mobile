@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/cache_service.dart';
 import '../../../core/services/dio_service.dart';
@@ -21,7 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  bool _isLoading = false;
+  final _isLoading = signal(false);
 
   @override
   void dispose() {
@@ -30,6 +31,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _isLoading.dispose();
     super.dispose();
   }
 
@@ -37,7 +39,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final form = _formKey.currentState;
     if (form == null || !form.validate()) return;
 
-    setState(() => _isLoading = true);
+    _isLoading.value = true;
     try {
       final prefs = await SharedPreferences.getInstance();
       final cacheService = CacheService(prefs);
@@ -63,7 +65,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       NotificationService.error(context, 'Inscription impossible: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _isLoading.value = false;
     }
   }
 
@@ -77,72 +79,76 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onPressed: () => context.go('/'),
         ),
       ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nom'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Email requis' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Téléphone'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Téléphone requis' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Mot de passe'),
-                validator: (v) =>
-                    (v == null || v.length < 6) ? 'Minimum 6 caractères' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Confirmer mot de passe',
+      body: Watch(
+        (context) => SafeArea(
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Nom'),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
                 ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Confirmation requise';
-                  if (v != _passwordController.text) {
-                    return 'Les mots de passe ne correspondent pas';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                height: 48,
-                child: FilledButton(
-                  onPressed: _isLoading ? null : _register,
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Créer mon compte'),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'Email'),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Email requis' : null,
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(labelText: 'Téléphone'),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Téléphone requis'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Mot de passe'),
+                  validator: (v) => (v == null || v.length < 6)
+                      ? 'Minimum 6 caractères'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirmer mot de passe',
+                  ),
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Confirmation requise';
+                    if (v != _passwordController.text) {
+                      return 'Les mots de passe ne correspondent pas';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: _isLoading.value ? null : _register,
+                    child: _isLoading.value
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Créer mon compte'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

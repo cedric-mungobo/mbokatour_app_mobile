@@ -196,7 +196,9 @@ class _AutoPlayVideoBackgroundState extends State<_AutoPlayVideoBackground> {
   }
 
   Future<void> _initVideo() async {
-    if (_isDisposed || _isInitializing || _isReady || _isFailed) return;
+    if (_isDisposed || _isInitializing || _isReady || _isFailed) {
+      return;
+    }
     _isInitializing = true;
 
     try {

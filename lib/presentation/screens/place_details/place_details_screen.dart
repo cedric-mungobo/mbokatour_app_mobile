@@ -156,12 +156,29 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      place.name,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            place.name,
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (place.isVerified) ...[
+                          const SizedBox(width: 8),
+                          const Tooltip(
+                            message: 'Lieu certifié',
+                            child: Icon(
+                              Icons.verified_rounded,
+                              color: Colors.blue,
+                              size: 24,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   if (place.rating != null) ...[

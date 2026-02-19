@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/cache_service.dart';
 import '../../../core/services/dio_service.dart';
@@ -18,7 +19,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _identifiantController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
+  final _isLoading = signal(false);
   late final Future<AuthRepositoryImpl> _repositoryFuture = _buildRepository();
   late final Future<CategoryRepositoryImpl> _categoryRepositoryFuture =
       _buildCategoryRepository();
@@ -43,6 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _identifiantController.dispose();
     _passwordController.dispose();
+    _isLoading.dispose();
     super.dispose();
   }
 
@@ -57,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    _isLoading.value = true;
 
     try {
       final repository = await _repositoryFuture;
@@ -95,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       NotificationService.error(context, 'Connexion impossible: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _isLoading.value = false;
     }
   }
 
@@ -109,61 +111,63 @@ class _LoginScreenState extends State<LoginScreen> {
           onPressed: () => context.go('/'),
         ),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 32),
+      body: Watch(
+        (context) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 32),
               const Text(
-                'Connexion simple',
+                'Connexion',
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Connectez-vous avec email ou téléphone et mot de passe.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _identifiantController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email ou téléphone',
-                  hintText: 'jean@example.com ou +243...',
-                  prefixIcon: Icon(Icons.person_outline),
+                const SizedBox(height: 8),
+                const Text(
+                  'Connectez-vous avec email ou téléphone et mot de passe.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Mot de passe',
-                  prefixIcon: Icon(Icons.lock_outline),
+                const SizedBox(height: 32),
+                TextField(
+                  controller: _identifiantController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email ou téléphone',
+                    hintText: 'jean@example.com ou +243...',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 48,
-                child: FilledButton(
-                  onPressed: _isLoading ? null : _login,
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Se connecter'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Mot de passe',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: _isLoading ? null : () => context.go('/otp'),
-                child: const Text('Vérifier mon OTP'),
-              ),
-            ],
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: _isLoading.value ? null : _login,
+                    child: _isLoading.value
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Se connecter'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _isLoading.value ? null : () => context.go('/otp'),
+                  child: const Text('Vérifier mon OTP'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

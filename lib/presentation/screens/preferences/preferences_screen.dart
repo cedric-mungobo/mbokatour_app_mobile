@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/services/cache_service.dart';
@@ -16,10 +17,10 @@ class PreferencesScreen extends StatefulWidget {
 }
 
 class _PreferencesScreenState extends State<PreferencesScreen> {
-  bool _isLoading = true;
-  bool _isSaving = false;
-  List<CategoryEntity> _categories = const [];
-  final Set<int> _selectedCategoryIds = <int>{};
+  final _isLoading = signal(true);
+  final _isSaving = signal(false);
+  final _categories = signal<List<CategoryEntity>>([]);
+  final _selectedCategoryIds = signal<Set<int>>(<int>{});
 
   @override
   void initState() {
@@ -34,18 +35,14 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    _isLoading.value = true;
     try {
       final repository = await _buildRepository();
       final categories = await repository.getCategories();
       final selected = await repository.getUserPreferenceCategoryIds();
       if (!mounted) return;
-      setState(() {
-        _categories = categories;
-        _selectedCategoryIds
-          ..clear()
-          ..addAll(selected);
-      });
+      _categories.value = categories;
+      _selectedCategoryIds.value = {...selected};
     } catch (e) {
       if (!mounted) return;
       NotificationService.error(
@@ -53,15 +50,15 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
         'Impossible de charger les préférences: $e',
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      _isLoading.value = false;
     }
   }
 
   Future<void> _savePreferences() async {
-    setState(() => _isSaving = true);
+    _isSaving.value = true;
     try {
       final repository = await _buildRepository();
-      await repository.saveUserPreferences(_selectedCategoryIds.toList());
+      await repository.saveUserPreferences(_selectedCategoryIds.value.toList());
       final prefs = await SharedPreferences.getInstance();
       final cacheService = CacheService(prefs);
       await cacheService.savePreferencesOnboardingDone(true);
@@ -72,101 +69,113 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       if (!mounted) return;
       NotificationService.error(context, 'Enregistrement impossible: $e');
     } finally {
-      if (mounted) setState(() => _isSaving = false);
+      _isSaving.value = false;
     }
   }
 
   void _toggleCategory(int categoryId) {
-    setState(() {
-      if (_selectedCategoryIds.contains(categoryId)) {
-        _selectedCategoryIds.remove(categoryId);
-      } else {
-        _selectedCategoryIds.add(categoryId);
-      }
-    });
+    final next = {..._selectedCategoryIds.value};
+    if (next.contains(categoryId)) {
+      next.remove(categoryId);
+    } else {
+      next.add(categoryId);
+    }
+    _selectedCategoryIds.value = next;
+  }
+
+  @override
+  void dispose() {
+    _isLoading.dispose();
+    _isSaving.dispose();
+    _categories.dispose();
+    _selectedCategoryIds.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Vos préférences')),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Choisissez vos catégories favorites',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+      body: Watch(
+        (context) => SafeArea(
+          child: _isLoading.value
+              ? const Center(child: CircularProgressIndicator())
+              : Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Choisissez vos catégories favorites',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Personnalisez votre expérience. Vous pouvez sélectionner plusieurs catégories.',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
+                      const SizedBox(height: 8),
+                      Text(
+                        'Personnalisez votre expérience. Vous pouvez sélectionner plusieurs catégories.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    Expanded(
-                      child: _categories.isEmpty
-                          ? Center(
-                              child: Text(
-                                'Aucune catégorie disponible.',
-                                style: TextStyle(color: Colors.grey.shade700),
-                              ),
-                            )
-                          : SingleChildScrollView(
-                              child: Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: _categories.map((category) {
-                                  final isSelected = _selectedCategoryIds
-                                      .contains(category.id);
-                                  final icon = (category.icon ?? '').trim();
-                                  final label = icon.isEmpty
-                                      ? category.name
-                                      : '$icon ${category.name}';
-                                  return FilterChip(
-                                    selected: isSelected,
-                                    label: Text(label),
-                                    onSelected: (_) =>
-                                        _toggleCategory(category.id),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: FilledButton(
-                        onPressed: _isSaving ? null : _savePreferences,
-                        child: _isSaving
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                      const SizedBox(height: 20),
+                      Expanded(
+                        child: _categories.value.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'Aucune catégorie disponible.',
+                                  style: TextStyle(color: Colors.grey.shade700),
                                 ),
                               )
-                            : Text(
-                                _selectedCategoryIds.isEmpty
-                                    ? 'Continuer sans préférence'
-                                    : 'Enregistrer mes préférences',
+                            : SingleChildScrollView(
+                                child: Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: _categories.value.map((category) {
+                                    final isSelected = _selectedCategoryIds
+                                        .value
+                                        .contains(category.id);
+                                    final icon = (category.icon ?? '').trim();
+                                    final label = icon.isEmpty
+                                        ? category.name
+                                        : '$icon ${category.name}';
+                                    return FilterChip(
+                                      selected: isSelected,
+                                      label: Text(label),
+                                      onSelected: (_) =>
+                                          _toggleCategory(category.id),
+                                    );
+                                  }).toList(),
+                                ),
                               ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: _isSaving.value ? null : _savePreferences,
+                          child: _isSaving.value
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  _selectedCategoryIds.value.isEmpty
+                                      ? 'Continuer sans préférence'
+                                      : 'Enregistrer mes préférences',
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+        ),
       ),
     );
   }
