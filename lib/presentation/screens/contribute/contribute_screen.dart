@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import '../../../core/services/cache_service.dart';
+import '../../../core/services/dio_service.dart';
 import '../../../core/services/user_location_service.dart';
+import '../../../data/repositories/category_repository_impl.dart';
+import '../../../domain/entities/category_entity.dart';
 
 class ContributeScreen extends StatefulWidget {
   const ContributeScreen({super.key});
@@ -12,6 +17,7 @@ class ContributeScreen extends StatefulWidget {
 }
 
 class _ContributeScreenState extends State<ContributeScreen> {
+  static const List<String> _supportedCurrencies = ['CDF', 'USD'];
   final _formKey = GlobalKey<FormState>();
 
   final _placeNameController = TextEditingController();
@@ -23,24 +29,62 @@ class _ContributeScreenState extends State<ContributeScreen> {
   final _phoneController = TextEditingController();
   final _whatsappController = TextEditingController();
   final _websiteController = TextEditingController();
-  final _openingHoursController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final Map<String, TextEditingController> _openingHoursControllers = {
+    'monday': TextEditingController(text: '08:00 - 18:00'),
+    'tuesday': TextEditingController(text: '08:00 - 18:00'),
+    'wednesday': TextEditingController(text: '08:00 - 18:00'),
+    'thursday': TextEditingController(text: '08:00 - 18:00'),
+    'friday': TextEditingController(text: '08:00 - 20:00'),
+    'saturday': TextEditingController(text: '10:00 - 20:00'),
+    'sunday': TextEditingController(text: 'closed'),
+  };
+  static const List<MapEntry<String, String>> _openingDays = [
+    MapEntry('monday', 'Lundi'),
+    MapEntry('tuesday', 'Mardi'),
+    MapEntry('wednesday', 'Mercredi'),
+    MapEntry('thursday', 'Jeudi'),
+    MapEntry('friday', 'Vendredi'),
+    MapEntry('saturday', 'Samedi'),
+    MapEntry('sunday', 'Dimanche'),
+  ];
   final _picker = ImagePicker();
   final _userLocationService = UserLocationService();
   final List<XFile> _selectedPhotos = [];
-  final List<String> _categoryOptions = const [
-    'Bars',
-    'Restaurants',
-    'Hôtels',
-    'Loisirs',
-    'Culture',
-    'Shopping',
-    'Autres',
-  ];
-  String? _selectedCategory;
+  List<CategoryEntity> _categoryOptions = const [];
+  final Set<int> _selectedCategoryIds = <int>{};
+  final List<_PriceFormItem> _prices = [];
 
   bool _isSubmitting = false;
   bool _isLocating = false;
+  bool _isLoadingCategories = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _isLoadingCategories = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheService = CacheService(prefs);
+      final repository = CategoryRepositoryImpl(
+        dioService: DioService(cacheService),
+      );
+      final categories = await repository.getCategories();
+      if (!mounted) return;
+      setState(() => _categoryOptions = categories);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Chargement catégories impossible: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoadingCategories = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -53,7 +97,12 @@ class _ContributeScreenState extends State<ContributeScreen> {
     _phoneController.dispose();
     _whatsappController.dispose();
     _websiteController.dispose();
-    _openingHoursController.dispose();
+    for (final controller in _openingHoursControllers.values) {
+      controller.dispose();
+    }
+    for (final item in _prices) {
+      item.dispose();
+    }
     _descriptionController.dispose();
     super.dispose();
   }
@@ -61,9 +110,101 @@ class _ContributeScreenState extends State<ContributeScreen> {
   Future<void> _submit() async {
     final form = _formKey.currentState;
     if (form == null || !form.validate()) return;
+    if (_selectedCategoryIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sélectionnez au moins une catégorie.')),
+      );
+      return;
+    }
+
+    final lat = double.tryParse(_latitudeController.text.trim());
+    final lng = double.tryParse(_longitudeController.text.trim());
+    if (lat == null || lng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Latitude/Longitude invalides ou manquantes.'),
+        ),
+      );
+      return;
+    }
+
+    final pricesPayload = <Map<String, dynamic>>[];
+    for (var i = 0; i < _prices.length; i++) {
+      final item = _prices[i];
+      final label = item.labelController.text.trim();
+      final priceText = item.priceController.text.trim();
+      final rawCurrency = item.currencyController.text.trim().toUpperCase();
+      final currency = _supportedCurrencies.contains(rawCurrency)
+          ? rawCurrency
+          : 'CDF';
+      final description = item.descriptionController.text.trim();
+      final hasAnyValue =
+          label.isNotEmpty ||
+          priceText.isNotEmpty ||
+          currency.isNotEmpty ||
+          description.isNotEmpty;
+      if (!hasAnyValue) continue;
+
+      final price = int.tryParse(priceText);
+      if (label.isEmpty || price == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Menu ${i + 1}: label et prix (nombre entier) sont requis.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      pricesPayload.add({
+        'label': label,
+        'price': price,
+        'currency': currency,
+        'description': description,
+      });
+    }
 
     setState(() => _isSubmitting = true);
-    await Future<void>.delayed(const Duration(milliseconds: 800));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheService = CacheService(prefs);
+      final dioService = DioService(cacheService);
+
+      final payload = <String, dynamic>{
+        'categories': _selectedCategoryIds.toList()..sort(),
+        'name': _placeNameController.text.trim(),
+        'description': _descriptionController.text.trim(),
+        'address': _addressController.text.trim(),
+        'ville': _cityController.text.trim(),
+        'commune': _communeController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'whatsapp': _whatsappController.text.trim(),
+        'website': _websiteController.text.trim(),
+        'opening_hours': _openingHoursControllers.map(
+          (day, controller) => MapEntry(day, controller.text.trim()),
+        ),
+        'prices': pricesPayload,
+        'lat': lat,
+        'lng': lng,
+      };
+
+      final response = await dioService.post(
+        '/contributions/places',
+        data: payload,
+      );
+      final body = response.data;
+      if (body is Map<String, dynamic> && body['success'] == false) {
+        throw Exception(body['message']?.toString() ?? 'Échec de contribution');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Envoi impossible: $e')));
+      return;
+    }
 
     if (!mounted) return;
     setState(() => _isSubmitting = false);
@@ -74,7 +215,7 @@ class _ContributeScreenState extends State<ContributeScreen> {
 
     _formKey.currentState?.reset();
     _placeNameController.clear();
-    _selectedCategory = null;
+    _selectedCategoryIds.clear();
     _addressController.clear();
     _cityController.clear();
     _communeController.clear();
@@ -83,7 +224,17 @@ class _ContributeScreenState extends State<ContributeScreen> {
     _phoneController.clear();
     _whatsappController.clear();
     _websiteController.clear();
-    _openingHoursController.clear();
+    _openingHoursControllers['monday']?.text = '08:00 - 18:00';
+    _openingHoursControllers['tuesday']?.text = '08:00 - 18:00';
+    _openingHoursControllers['wednesday']?.text = '08:00 - 18:00';
+    _openingHoursControllers['thursday']?.text = '08:00 - 18:00';
+    _openingHoursControllers['friday']?.text = '08:00 - 20:00';
+    _openingHoursControllers['saturday']?.text = '10:00 - 20:00';
+    _openingHoursControllers['sunday']?.text = 'closed';
+    for (final item in _prices) {
+      item.dispose();
+    }
+    _prices.clear();
     _descriptionController.clear();
     _selectedPhotos.clear();
     setState(() {});
@@ -143,6 +294,32 @@ class _ContributeScreenState extends State<ContributeScreen> {
     });
   }
 
+  void _addPriceItem() {
+    setState(() {
+      _prices.add(_PriceFormItem());
+    });
+  }
+
+  void _removePriceItem(int index) {
+    if (index < 0 || index >= _prices.length) return;
+    setState(() {
+      final item = _prices.removeAt(index);
+      item.dispose();
+    });
+  }
+
+  InputDecoration _compactDecoration({
+    required String labelText,
+    String? hintText,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -185,29 +362,46 @@ class _ContributeScreenState extends State<ContributeScreen> {
               },
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedCategory,
-              decoration: const InputDecoration(
-                labelText: 'Catégorie (categories)',
-              ),
-              items: _categoryOptions
-                  .map(
-                    (category) => DropdownMenuItem<String>(
-                      value: category,
-                      child: Text(category),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                setState(() => _selectedCategory = value);
-              },
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Catégorie requise';
-                }
-                return null;
-              },
+            const Text(
+              'Catégories (categories)',
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
+            const SizedBox(height: 8),
+            if (_isLoadingCategories)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: LinearProgressIndicator(minHeight: 2),
+              )
+            else if (_categoryOptions.isEmpty)
+              Text(
+                'Aucune catégorie disponible.',
+                style: TextStyle(color: Colors.grey.shade700),
+              )
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _categoryOptions.map((category) {
+                  final id = category.id;
+                  final icon = (category.icon ?? '').trim();
+                  final label = icon.isEmpty
+                      ? category.name
+                      : '$icon ${category.name}';
+                  return FilterChip(
+                    label: Text(label),
+                    selected: _selectedCategoryIds.contains(id),
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _selectedCategoryIds.add(id);
+                        } else {
+                          _selectedCategoryIds.remove(id);
+                        }
+                      });
+                    },
+                  );
+                }).toList(),
+              ),
             const SizedBox(height: 8),
             TextFormField(
               controller: _addressController,
@@ -223,6 +417,12 @@ class _ContributeScreenState extends State<ContributeScreen> {
             TextFormField(
               controller: _cityController,
               decoration: const InputDecoration(labelText: 'Ville (ville)'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Ville requise';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 8),
             TextFormField(
@@ -250,6 +450,32 @@ class _ContributeScreenState extends State<ContributeScreen> {
               ),
             ],
             const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _latitudeController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      signed: true,
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(labelText: 'Latitude'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    controller: _longitudeController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      signed: true,
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(labelText: 'Longitude'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             TextFormField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
@@ -268,15 +494,144 @@ class _ContributeScreenState extends State<ContributeScreen> {
               decoration: const InputDecoration(labelText: 'Site web'),
             ),
             const SizedBox(height: 8),
-            TextFormField(
-              controller: _openingHoursController,
-              minLines: 2,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Horaires d\'ouverture (opening_hours)',
-                hintText: 'Ex: monday: 09:00-18:00',
-              ),
+            const Text(
+              'Horaires d\'ouverture (opening_hours)',
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
+            const SizedBox(height: 8),
+            ..._openingDays.map((entry) {
+              final dayKey = entry.key;
+              final dayLabel = entry.value;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TextFormField(
+                  controller: _openingHoursControllers[dayKey],
+                  decoration: InputDecoration(
+                    labelText: dayLabel,
+                    hintText: 'Ex: 08:00 - 18:00 ou closed',
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Prix / Menus (prices)',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _addPriceItem,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Ajouter'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (_prices.isEmpty)
+              Text(
+                'Aucun menu ajouté.',
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
+            ...List.generate(_prices.length, (index) {
+              final item = _prices[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: DefaultTextStyle.merge(
+                  style: const TextStyle(fontSize: 13),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Menu ${index + 1}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            onPressed: () => _removePriceItem(index),
+                            icon: const Icon(Icons.delete_outline),
+                            tooltip: 'Supprimer',
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 30,
+                              minHeight: 30,
+                            ),
+                          ),
+                        ],
+                      ),
+                      TextFormField(
+                        controller: item.labelController,
+                        decoration: _compactDecoration(
+                          labelText: 'Label',
+                          hintText: 'Menu simple',
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: TextFormField(
+                              controller: item.priceController,
+                              keyboardType: TextInputType.number,
+                              decoration: _compactDecoration(
+                                labelText: 'Prix',
+                                hintText: '15000',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue:
+                                  _supportedCurrencies.contains(
+                                    item.currencyController.text.trim(),
+                                  )
+                                  ? item.currencyController.text.trim()
+                                  : 'CDF',
+                              decoration: _compactDecoration(
+                                labelText: 'Devise',
+                              ),
+                              items: _supportedCurrencies
+                                  .map(
+                                    (currency) => DropdownMenuItem<String>(
+                                      value: currency,
+                                      child: Text(currency),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                item.currencyController.text = value ?? 'CDF';
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: item.descriptionController,
+                        decoration: _compactDecoration(
+                          labelText: 'Description',
+                          hintText: 'Plat + boisson',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
             const SizedBox(height: 8),
             TextFormField(
               controller: _descriptionController,
@@ -371,5 +726,21 @@ class _ContributeScreenState extends State<ContributeScreen> {
         ),
       ),
     );
+  }
+}
+
+class _PriceFormItem {
+  final TextEditingController labelController = TextEditingController();
+  final TextEditingController priceController = TextEditingController();
+  final TextEditingController currencyController = TextEditingController(
+    text: 'CDF',
+  );
+  final TextEditingController descriptionController = TextEditingController();
+
+  void dispose() {
+    labelController.dispose();
+    priceController.dispose();
+    currencyController.dispose();
+    descriptionController.dispose();
   }
 }

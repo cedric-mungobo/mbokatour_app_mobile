@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'core/constants/storage_constants.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+  final prefs = await SharedPreferences.getInstance();
+  final isLoggedIn = prefs.getBool(StorageConstants.isLoggedIn) ?? false;
 
-  // TODO: Initialiser Firebase
-  // await Firebase.initializeApp();
-
-  // TODO: Initialiser SharedPreferences
-  // final prefs = await SharedPreferences.getInstance();
-
-  runApp(const MyApp());
+  runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+
+  const MyApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.light,
       themeMode: ThemeMode.light,
-      routerConfig: AppRouter.router,
+      routerConfig: AppRouter.createRouter(isLoggedIn: isLoggedIn),
     );
   }
 }

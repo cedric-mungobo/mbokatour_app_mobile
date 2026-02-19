@@ -55,9 +55,17 @@ class CacheService {
     return _prefs.getBool(StorageConstants.isLoggedIn) ?? false;
   }
 
+  // Preferences onboarding
+  Future<void> savePreferencesOnboardingDone(bool isDone) async {
+    await _prefs.setBool(StorageConstants.preferencesOnboardingDone, isDone);
+  }
+
+  Future<bool> isPreferencesOnboardingDone() async {
+    return _prefs.getBool(StorageConstants.preferencesOnboardingDone) ?? false;
+  }
+
   // Clear all data
   Future<void> clearAll() async {
     await _prefs.clear();
   }
 }
-

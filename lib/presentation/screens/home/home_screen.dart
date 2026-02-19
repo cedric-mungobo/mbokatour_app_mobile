@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_theme.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/media_settings_service.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import '../../../core/stores/place_store.dart';
 import '../../../domain/entities/place_entity.dart';
@@ -90,10 +92,12 @@ class _HomeScreenState extends State<HomeScreen> {
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
+        backgroundColor: AppTheme.brandBlack,
         body: Watch((context) {
           final isLoading = _store.isPlacesLoading.value;
           final isLoadingMore = _store.isPlacesLoadingMore.value;
           final places = _store.places.value;
+          final isMuted = MediaSettingsService.isMuted.value;
 
           return MediaQuery.removePadding(
             context: context,
@@ -125,7 +129,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           else if (places.isEmpty)
                             const SizedBox(
                               height: 380,
-                              child: Center(child: Text('Aucun lieu trouvé')),
+                              child: Center(
+                                child: Text(
+                                  'Aucun lieu trouvé',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
                             )
                           else
                             MasonryGridView.count(
@@ -140,6 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 return PlaceCard(
                                   place: place,
                                   aspectRatio: _resolveAspectRatio(place),
+                                  isMuted: isMuted,
                                   onTap: () => context.go('/place/${place.id}'),
                                 );
                               },
@@ -247,20 +260,12 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
 
   @override
   Widget build(BuildContext context) {
-    final isFocused = _focusNode.hasFocus;
-
     return Container(
       width: double.infinity,
       constraints: const BoxConstraints(minHeight: 52, maxHeight: 56),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.98),
-        border: Border.all(
-          color: isFocused
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.55)
-              : Colors.black.withValues(alpha: 0.06),
-          width: isFocused ? 1.5 : 1,
-        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -292,6 +297,11 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
                     fontSize: 15,
                     fontWeight: FontWeight.w400,
                   ),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
                 ),
               ),
             ),

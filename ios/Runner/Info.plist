@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Mbokatour utilise votre position pour renseigner automatiquement les coordonnees du lieu.</string>
 </dict>
 </plist>
