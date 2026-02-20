@@ -80,6 +80,46 @@ class PlaceRepositoryImpl {
     return result.places;
   }
 
+  Future<List<PlaceEntity>> getNearbyPlaces({
+    required double latitude,
+    required double longitude,
+    double radiusKm = 10,
+    int page = 1,
+  }) async {
+    final query = <String, dynamic>{
+      'lat': latitude,
+      'lng': longitude,
+      'radius': radiusKm,
+      'page': page,
+    };
+
+    try {
+      final response = await _dioService.get(
+        ApiConstants.placeNearby,
+        queryParameters: query,
+      );
+      final payload = _asMap(response.data);
+      final data = _extractPlaces(payload);
+      if (data.isNotEmpty) {
+        return data.map((json) => PlaceModel.fromJson(json)).toList();
+      }
+    } catch (_) {
+      // Fallback below for API variants in older deployments.
+    }
+
+    try {
+      final fallbackResponse = await _dioService.get(
+        ApiConstants.places,
+        queryParameters: query,
+      );
+      final payload = _asMap(fallbackResponse.data);
+      final data = _extractPlaces(payload);
+      return data.map((json) => PlaceModel.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération des lieux proches: $e');
+    }
+  }
+
   List<dynamic> _extractPlaces(dynamic payload) {
     if (payload is! Map<String, dynamic>) return const [];
 

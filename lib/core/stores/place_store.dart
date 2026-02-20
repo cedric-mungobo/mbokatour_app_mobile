@@ -12,8 +12,10 @@ class PlaceStore {
   static final PlaceStore instance = PlaceStore._();
 
   final places = signal<List<PlaceEntity>>([]);
+  final nearbyPlaces = signal<List<PlaceEntity>>([]);
   final selectedPlace = signal<PlaceEntity?>(null);
   final isPlacesLoading = signal(false);
+  final isNearbyPlacesLoading = signal(false);
   final isPlacesLoadingMore = signal(false);
   final isPlaceLoading = signal(false);
   final errorMessage = signal<String?>(null);
@@ -147,6 +149,33 @@ class PlaceStore {
 
     _placesLoadMoreInFlight = task;
     return task;
+  }
+
+  Future<void> loadNearbyPlaces({
+    required double latitude,
+    required double longitude,
+    double radiusKm = 10,
+  }) async {
+    if (_repository == null) await init();
+    final repository = _repository;
+    if (repository == null) return;
+
+    isNearbyPlacesLoading.value = true;
+    errorMessage.value = null;
+
+    try {
+      final result = await repository.getNearbyPlaces(
+        latitude: latitude,
+        longitude: longitude,
+        radiusKm: radiusKm,
+      );
+      nearbyPlaces.value = result;
+    } catch (e) {
+      nearbyPlaces.value = [];
+      errorMessage.value = _buildLoadPlacesErrorMessage(e);
+    } finally {
+      isNearbyPlacesLoading.value = false;
+    }
   }
 
   Future<void> loadPlaceById(String id, {bool forceRefresh = false}) async {

@@ -166,7 +166,13 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
           title: const Text('Détail du lieu'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go('/home'),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
           ),
         ),
         body: SingleChildScrollView(

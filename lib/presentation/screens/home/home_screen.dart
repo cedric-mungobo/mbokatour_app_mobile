@@ -67,10 +67,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted || action == null) return;
 
     if (action == BoredAction.nearby) {
-      NotificationService.info(context, 'Section "lieux proches" à brancher.');
+      context.push('/nearby');
       return;
     }
-    NotificationService.info(context, 'Section spéciale à brancher.');
+    context.push('/sections');
   }
 
   void _openProfile() {
@@ -153,7 +153,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   place: place,
                                   aspectRatio: _resolveAspectRatio(place),
                                   isMuted: isMuted,
-                                  onTap: () => context.go('/place/${place.id}'),
+                                  onTap: () =>
+                                      context.push('/place/${place.id}'),
                                 );
                               },
                             ),

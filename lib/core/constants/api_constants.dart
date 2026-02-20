@@ -17,6 +17,9 @@ class ApiConstants {
   // Endpoints
   static String get places => '$apiPrefix/places';
   static String get placeSearch => '$apiPrefix/places/search';
+  static String get placeNearby => '$apiPrefix/places/nearby';
+  static String get sections => '$apiPrefix/sections';
+  static String sectionBySlug(String slug) => '$sections/$slug';
 
   // Timeout
   static const Duration connectTimeout = Duration(seconds: 45);
