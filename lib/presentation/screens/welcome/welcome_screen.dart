@@ -105,7 +105,7 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                   const SizedBox(height: 1),
                   const Text(
-                    'Découvre la RDC, autrement.',
+                    'Découvre les meilleurs lieux à Kinshasa',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -115,7 +115,7 @@ class WelcomeScreen extends StatelessWidget {
                   ).animate().fadeIn(delay: 360.ms, duration: 700.ms),
                   const SizedBox(height: 2),
                   const Text(
-                    'Trouve des lieux sympas en 2 minutes.',
+                    'Lieux touristiques, hôtels, culture, restaurants et sorties - tout autour de toi dans une seule app. MbokaTour te révèle des endroits uniques à visiter.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,

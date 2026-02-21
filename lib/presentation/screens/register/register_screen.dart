@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -151,7 +152,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         : const Text('Créer mon compte'),
                   ),
                 ),
-              ],
+              ]
+                  .animate(interval: 65.ms)
+                  .fadeIn(duration: 260.ms)
+                  .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic),
             ),
           ),
         ),

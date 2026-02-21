@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../presentation/screens/welcome/welcome_screen.dart';
 import '../../presentation/screens/login/login_screen.dart';
@@ -13,65 +14,90 @@ import '../../presentation/screens/contribute/contribute_screen.dart';
 import '../../presentation/screens/preferences/preferences_screen.dart';
 
 class AppRouter {
+  static GoRoute _animatedRoute({
+    required String path,
+    required Widget Function(BuildContext, GoRouterState) builder,
+  }) {
+    return GoRoute(
+      path: path,
+      pageBuilder: (context, state) => CustomTransitionPage<void>(
+        key: state.pageKey,
+        child: builder(context, state),
+        transitionDuration: const Duration(milliseconds: 320),
+        reverseTransitionDuration: const Duration(milliseconds: 220),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+          final offsetAnimation = Tween<Offset>(
+            begin: const Offset(0, 0.04),
+            end: Offset.zero,
+          ).animate(curved);
+          return FadeTransition(
+            opacity: curved,
+            child: SlideTransition(position: offsetAnimation, child: child),
+          );
+        },
+      ),
+    );
+  }
+
   static GoRouter createRouter({required bool isLoggedIn}) {
     return GoRouter(
       initialLocation: isLoggedIn ? '/home' : '/',
       routes: [
-        // Welcome Screen
-        GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
-
-        // Login Screen
-        GoRoute(
+        _animatedRoute(
+          path: '/',
+          builder: (context, state) => const WelcomeScreen(),
+        ),
+        _animatedRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
         ),
-        GoRoute(
+        _animatedRoute(
           path: '/register',
           builder: (context, state) => const RegisterScreen(),
         ),
-        GoRoute(
+        _animatedRoute(
           path: '/otp',
           builder: (context, state) =>
               OtpScreen(initialEmail: state.uri.queryParameters['email']),
         ),
-
-        // Home Screen
-        GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
-        GoRoute(
+        _animatedRoute(
+          path: '/home',
+          builder: (context, state) => const HomeScreen(),
+        ),
+        _animatedRoute(
           path: '/nearby',
           builder: (context, state) => const NearbyPlacesScreen(),
         ),
-        GoRoute(
+        _animatedRoute(
           path: '/sections',
           builder: (context, state) => const SectionsScreen(),
         ),
-        GoRoute(
+        _animatedRoute(
           path: '/sections/:slug',
           builder: (context, state) =>
               SectionDetailsScreen(slug: state.pathParameters['slug']!),
         ),
-
-        // Place Details Screen
-        GoRoute(
+        _animatedRoute(
           path: '/place/:id',
           builder: (context, state) {
             final placeId = state.pathParameters['id']!;
             return PlaceDetailsScreen(placeId: placeId);
           },
         ),
-
-        // Profile Screen
-        GoRoute(
+        _animatedRoute(
           path: '/profile',
           builder: (context, state) => const ProfileScreen(),
         ),
-
-        // Contribute Screen
-        GoRoute(
+        _animatedRoute(
           path: '/contribute',
           builder: (context, state) => const ContributeScreen(),
         ),
-        GoRoute(
+        _animatedRoute(
           path: '/preferences',
           builder: (context, state) => const PreferencesScreen(),
         ),

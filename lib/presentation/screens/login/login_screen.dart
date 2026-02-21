@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -166,7 +167,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _isLoading.value ? null : () => context.go('/otp'),
                 child: const Text('Vérifier mon OTP'),
               ),
-            ],
+            ]
+                .animate(interval: 70.ms)
+                .fadeIn(duration: 280.ms)
+                .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic),
           ),
         ),
       ),

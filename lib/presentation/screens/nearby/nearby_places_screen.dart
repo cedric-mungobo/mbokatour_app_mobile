@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -160,6 +161,12 @@ class _NearbyPlacesScreenState extends State<NearbyPlacesScreen> {
                           place: place,
                           distanceLabel: _distanceLabel(place),
                           onTap: () => context.push('/place/${place.id}'),
+                        ).animate(
+                          delay: (50 + (index % 8) * 40).ms,
+                        ).fadeIn(duration: 260.ms).slideY(
+                          begin: 0.05,
+                          end: 0,
+                          curve: Curves.easeOutCubic,
                         );
                       },
                     ),

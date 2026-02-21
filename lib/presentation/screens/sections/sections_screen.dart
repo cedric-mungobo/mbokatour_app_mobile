@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -176,6 +177,12 @@ class _SectionsScreenState extends State<SectionsScreen> {
                         ],
                       ),
                     ),
+                  ).animate(
+                    delay: (40 + (index % 8) * 35).ms,
+                  ).fadeIn(duration: 250.ms).slideY(
+                    begin: 0.05,
+                    end: 0,
+                    curve: Curves.easeOutCubic,
                   );
                 },
               ),

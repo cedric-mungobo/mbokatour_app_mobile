@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -191,6 +192,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                   isMuted: isMuted,
                                   onTap: () =>
                                       context.push('/place/${place.id}'),
+                                ).animate(
+                                  delay: (50 + (index % 10) * 30).ms,
+                                ).fadeIn(duration: 260.ms).slideY(
+                                  begin: 0.04,
+                                  end: 0,
+                                  curve: Curves.easeOutCubic,
                                 );
                               },
                             ),
@@ -247,6 +254,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
+                  ).animate().fadeIn(delay: 140.ms, duration: 280.ms).slideY(
+                    begin: -0.04,
+                    end: 0,
+                    curve: Curves.easeOutCubic,
                   ),
                 ),
                 Positioned(
@@ -259,6 +270,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     onBoredTap: _openBoredSheet,
                     onContributeTap: _openContribute,
                     onProfileTap: _openProfile,
+                  ).animate().fadeIn(delay: 220.ms, duration: 300.ms).slideY(
+                    begin: 0.08,
+                    end: 0,
+                    curve: Curves.easeOutCubic,
                   ),
                 ),
               ],
