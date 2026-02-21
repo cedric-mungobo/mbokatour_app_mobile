@@ -239,8 +239,33 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   media: place.media,
                   onTapMedia: (index) => _openMediaViewer(index, place.media),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
               ],
+
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  _StatMiniItem(
+                    icon: Icons.favorite_outline,
+                    value: place.stats.likesCount.toString(),
+                  ),
+                  _StatMiniItem(
+                    icon: Icons.visibility_outlined,
+                    value: place.stats.visitsCount.toString(),
+                  ),
+                  _StatMiniItem(
+                    icon: Icons.rate_review_outlined,
+                    value: place.stats.reviewsCount.toString(),
+                  ),
+                  _StatMiniItem(
+                    icon: Icons.bookmark_border_outlined,
+                    value: place.stats.favoritesCount.toString(),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
               // Titre et note
               Row(
                 children: [
@@ -594,35 +619,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 ),
               ),
 
-
-              const SizedBox(height: 18),
-              const _SectionTitle('Statistiques'),
-              _SectionCard(
-                child: Row(
-                  children: [
-                    _StatInlineItem(
-                      icon: Icons.favorite_outline,
-                      label: 'Likes',
-                      value: place.stats.likesCount.toString(),
-                    ),
-                    _StatInlineItem(
-                      icon: Icons.visibility_outlined,
-                      label: 'Visites',
-                      value: place.stats.visitsCount.toString(),
-                    ),
-                    _StatInlineItem(
-                      icon: Icons.rate_review_outlined,
-                      label: 'Avis',
-                      value: place.stats.reviewsCount.toString(),
-                    ),
-                    _StatInlineItem(
-                      icon: Icons.bookmark_border_outlined,
-                      label: 'Favoris',
-                      value: place.stats.favoritesCount.toString(),
-                    ),
-                  ],
-                ),
-              ),
 
               const SizedBox(height: 32),
 
