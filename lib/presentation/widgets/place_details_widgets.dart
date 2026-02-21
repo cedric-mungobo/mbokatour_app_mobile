@@ -360,6 +360,70 @@ class _StatInlineItem extends StatelessWidget {
   }
 }
 
+class _ReviewTile extends StatelessWidget {
+  final PlaceReviewEntity review;
+  final String formattedDate;
+
+  const _ReviewTile({required this.review, required this.formattedDate});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.black12,
+                backgroundImage: review.user?.avatar != null
+                    ? NetworkImage(review.user!.avatar!)
+                    : null,
+                child: review.user?.avatar == null
+                    ? const Icon(Icons.person, size: 16, color: Colors.black54)
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  review.user?.name?.trim().isNotEmpty == true
+                      ? review.user!.name!
+                      : 'Utilisateur',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              Text(
+                formattedDate,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            review.comment,
+            style: const TextStyle(fontSize: 14, height: 1.35),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MediaPreview extends StatelessWidget {
   final PlaceMedia media;
   final VoidCallback onTap;

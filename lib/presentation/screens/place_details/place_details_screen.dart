@@ -13,6 +13,7 @@ import '../../../core/services/media_cache_manager.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/stores/place_store.dart';
 import '../../../domain/entities/place_entity.dart';
+import '../../../domain/entities/place_review_entity.dart';
 
 part '../../widgets/place_details_widgets.dart';
 
@@ -27,11 +28,19 @@ class PlaceDetailsScreen extends StatefulWidget {
 
 class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
   final _store = PlaceStore.instance;
+  final _reviewController = TextEditingController();
+  bool _showAllReviews = false;
 
   @override
   void initState() {
     super.initState();
     _initializeDependencies();
+  }
+
+  @override
+  void dispose() {
+    _reviewController.dispose();
+    super.dispose();
   }
 
   Future<void> _initializeDependencies() async {
@@ -44,9 +53,37 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
 
   Future<void> _loadPlaceDetails({bool forceRefresh = false}) async {
     await _store.loadPlaceById(widget.placeId, forceRefresh: forceRefresh);
+    await _store.loadPlaceReviews(widget.placeId);
     if (mounted && _store.errorMessage.value != null) {
       NotificationService.error(context, _store.errorMessage.value!);
     }
+  }
+
+  Future<void> _submitReview() async {
+    final success = await _store.submitPlaceReview(
+      placeId: widget.placeId,
+      comment: _reviewController.text,
+    );
+    if (!mounted) return;
+
+    if (success) {
+      _reviewController.clear();
+      NotificationService.success(context, 'Avis publié');
+      return;
+    }
+
+    final message =
+        _store.reviewErrorMessage.value ?? 'Impossible de publier votre avis.';
+    NotificationService.warning(context, message);
+  }
+
+  String _formatReviewDate(DateTime? value) {
+    if (value == null) return 'Date inconnue';
+    final local = value.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final year = local.year.toString();
+    return '$day/$month/$year';
   }
 
   void _openMediaViewer(int index, List<PlaceMedia> media) {
@@ -127,6 +164,10 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       final isLoading = _store.isPlaceLoading.value;
       final place = _store.selectedPlace.value;
       final isOffline = _store.isOffline.value;
+      final reviews = _store.placeReviews.value;
+      final isReviewsLoading = _store.isPlaceReviewsLoading.value;
+      final isSubmittingReview = _store.isSubmittingPlaceReview.value;
+      final visibleReviews = _showAllReviews ? reviews : reviews.take(5).toList();
 
       if (isLoading) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -141,7 +182,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               children: [
                 Text(
                   isOffline
-                      ? 'Aucune connexion et aucun détail  disponible '
+                      ? 'Aucune connexion et aucun détail en cache'
                       : 'Détail du lieu indisponible',
                 ),
                 const SizedBox(height: 12),
@@ -366,6 +407,8 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 ),
               ),
 
+              const SizedBox(height: 18),
+             
               if (hasContactsSection) ...[
                 const SizedBox(height: 18),
                 const _SectionTitle('Contacts'),
@@ -471,6 +514,86 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   ),
                 ),
               ],
+               const _SectionTitle('Avis'),
+              _SectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _reviewController,
+                      minLines: 3,
+                      maxLines: 5,
+                      maxLength: 1000,
+                      enabled: !isSubmittingReview,
+                      decoration: const InputDecoration(
+                        labelText: 'Votre avis',
+                        hintText:
+                            'Partagez votre expérience (10 à 1000 caractères)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: isSubmittingReview ? null : _submitReview,
+                        icon: isSubmittingReview
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.send_outlined),
+                        label: Text(
+                          isSubmittingReview
+                              ? 'Publication...'
+                              : 'Publier un avis',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    if (isReviewsLoading)
+                      const Center(child: CircularProgressIndicator())
+                    else if (reviews.isEmpty)
+                      Text(
+                        'Aucun avis pour le moment.',
+                        style: TextStyle(color: Colors.grey.shade700),
+                      )
+                    else
+                      Column(
+                        children: visibleReviews
+                            .map(
+                              (review) => _ReviewTile(
+                                review: review,
+                                formattedDate: _formatReviewDate(
+                                  review.createdAt,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    if (!isReviewsLoading && reviews.length > 5)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _showAllReviews = !_showAllReviews;
+                            });
+                          },
+                          child: Text(
+                            _showAllReviews
+                                ? 'Voir moins'
+                                : 'Voir tout (${reviews.length})',
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
 
               const SizedBox(height: 18),
               const _SectionTitle('Statistiques'),

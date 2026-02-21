@@ -9,6 +9,7 @@ import '../services/dio_service.dart';
 import '../../data/models/place_model.dart';
 import '../../data/repositories/place_repository_impl.dart';
 import '../../domain/entities/place_entity.dart';
+import '../../domain/entities/place_review_entity.dart';
 
 class PlaceStore {
   PlaceStore._();
@@ -22,7 +23,11 @@ class PlaceStore {
   final isNearbyPlacesLoading = signal(false);
   final isPlacesLoadingMore = signal(false);
   final isPlaceLoading = signal(false);
+  final placeReviews = signal<List<PlaceReviewEntity>>([]);
+  final isPlaceReviewsLoading = signal(false);
+  final isSubmittingPlaceReview = signal(false);
   final errorMessage = signal<String?>(null);
+  final reviewErrorMessage = signal<String?>(null);
   final hasMorePlaces = signal(false);
   final isOffline = signal(false);
 
@@ -260,6 +265,91 @@ class PlaceStore {
     return task;
   }
 
+  Future<void> loadPlaceReviews(String placeId) async {
+    if (_repository == null) await init();
+    final repository = _repository;
+    if (repository == null) return;
+
+    final normalizedId = placeId.trim();
+    if (normalizedId.isEmpty) return;
+
+    isPlaceReviewsLoading.value = true;
+    reviewErrorMessage.value = null;
+
+    try {
+      final reviews = await repository.getPlaceReviews(normalizedId);
+      placeReviews.value = reviews;
+      isOffline.value = false;
+    } catch (e) {
+      if (e is DioException && e.response?.statusCode == 404) {
+        placeReviews.value = const [];
+        return;
+      }
+      reviewErrorMessage.value = _buildLoadReviewsErrorMessage(e);
+      isOffline.value = _isNetworkIssue(e);
+    } finally {
+      isPlaceReviewsLoading.value = false;
+    }
+  }
+
+  Future<bool> submitPlaceReview({
+    required String placeId,
+    required String comment,
+  }) async {
+    if (_repository == null) await init();
+    final repository = _repository;
+    if (repository == null) return false;
+
+    final normalizedPlaceId = placeId.trim();
+    final normalizedComment = comment.trim();
+
+    if (normalizedPlaceId.isEmpty) {
+      reviewErrorMessage.value = 'Lieu invalide pour publier un avis.';
+      return false;
+    }
+    if (normalizedComment.length < 10 || normalizedComment.length > 1000) {
+      reviewErrorMessage.value =
+          'Le commentaire doit contenir entre 10 et 1000 caractères.';
+      return false;
+    }
+
+    final currentUserId = _prefs?.getString(StorageConstants.userId)?.trim();
+    if (currentUserId != null && currentUserId.isNotEmpty) {
+      final hasAlreadyReviewed = placeReviews.value.any((review) {
+        return review.user?.id == currentUserId;
+      });
+      if (hasAlreadyReviewed) {
+        reviewErrorMessage.value =
+            'Vous avez déjà publié un avis pour ce lieu.';
+        return false;
+      }
+    }
+
+    isSubmittingPlaceReview.value = true;
+    reviewErrorMessage.value = null;
+
+    try {
+      final created = await repository.createReview(
+        placeId: normalizedPlaceId,
+        comment: normalizedComment,
+      );
+      placeReviews.value = [created, ...placeReviews.value]
+        ..sort((a, b) {
+          final left = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final right = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return right.compareTo(left);
+        });
+      isOffline.value = false;
+      return true;
+    } catch (e) {
+      reviewErrorMessage.value = _buildSubmitReviewErrorMessage(e);
+      isOffline.value = _isNetworkIssue(e);
+      return false;
+    } finally {
+      isSubmittingPlaceReview.value = false;
+    }
+  }
+
   String _buildLoadPlacesErrorMessage(Object error) {
     final lower = error.toString().toLowerCase();
     if (lower.contains('timeout')) {
@@ -270,6 +360,48 @@ class PlaceStore {
       return 'Connexion impossible au serveur. Vérifiez internet puis réessayez.';
     }
     return 'Erreur lors du chargement des lieux.';
+  }
+
+  String _buildLoadReviewsErrorMessage(Object error) {
+    final lower = error.toString().toLowerCase();
+    if (lower.contains('timeout')) {
+      return 'Le chargement des avis a expiré. Réessayez.';
+    }
+    if (_isNetworkIssue(error)) {
+      return 'Connexion impossible pour charger les avis.';
+    }
+    return 'Erreur lors du chargement des avis.';
+  }
+
+  String _buildSubmitReviewErrorMessage(Object error) {
+    if (error is DioException) {
+      if (error.response?.statusCode == 409) {
+        return 'Vous avez déjà publié un avis pour ce lieu.';
+      }
+      if (error.response?.statusCode == 422) {
+        final data = error.response?.data;
+        if (data is Map<String, dynamic>) {
+          final errors = data['errors'];
+          if (errors is Map<String, dynamic>) {
+            final comments = errors['comment'];
+            if (comments is List && comments.isNotEmpty) {
+              final message = comments.first?.toString().trim();
+              if (message != null && message.isNotEmpty) {
+                return message;
+              }
+            }
+          }
+          final message = data['message']?.toString().trim();
+          if (message != null && message.isNotEmpty) {
+            return message;
+          }
+        }
+      }
+    }
+    if (_isNetworkIssue(error)) {
+      return 'Connexion impossible pour publier votre avis.';
+    }
+    return 'Impossible de publier votre avis.';
   }
 
   bool _isNetworkIssue(Object error) {
@@ -292,7 +424,10 @@ class PlaceStore {
     final prefs = _prefs;
     if (prefs == null) return;
     final payload = entries.map(_placeToCacheJson).toList(growable: false);
-    await prefs.setString(StorageConstants.placesListCache, jsonEncode(payload));
+    await prefs.setString(
+      StorageConstants.placesListCache,
+      jsonEncode(payload),
+    );
     await prefs.setString(
       StorageConstants.placesListCachedAt,
       DateTime.now().toIso8601String(),
@@ -312,9 +447,7 @@ class PlaceStore {
       final restored = <PlaceEntity>[];
       for (final item in decoded) {
         if (item is! Map) continue;
-        restored.add(
-          PlaceModel.fromJson(Map<String, dynamic>.from(item)),
-        );
+        restored.add(PlaceModel.fromJson(Map<String, dynamic>.from(item)));
       }
       if (restored.isEmpty) return false;
       places.value = restored;
@@ -405,7 +538,10 @@ class PlaceStore {
               'id': media.id,
               'type': media.type,
               'is_primary': media.isPrimary,
-              if (media.isVideo) 'video_url': media.url else 'image_url': media.url,
+              if (media.isVideo)
+                'video_url': media.url
+              else
+                'image_url': media.url,
             },
           )
           .toList(growable: false),

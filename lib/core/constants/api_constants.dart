@@ -18,6 +18,9 @@ class ApiConstants {
   static String get places => '$apiPrefix/places';
   static String get placeSearch => '$apiPrefix/places/search';
   static String get placeNearby => '$apiPrefix/places/nearby';
+  static String placeReviews(String placeId) =>
+      '$apiPrefix/places/$placeId/reviews';
+  static String get reviews => '$apiPrefix/reviews';
   static String get sections => '$apiPrefix/sections';
   static String sectionBySlug(String slug) => '$sections/$slug';
 

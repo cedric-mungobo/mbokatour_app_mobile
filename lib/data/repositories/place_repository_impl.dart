@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/services/dio_service.dart';
 import '../../domain/entities/place_entity.dart';
+import '../../domain/entities/place_review_entity.dart';
 import '../models/place_model.dart';
+import '../models/place_review_model.dart';
 
 class PaginatedPlacesResult {
   final List<PlaceEntity> places;
@@ -80,6 +83,59 @@ class PlaceRepositoryImpl {
     return result.places;
   }
 
+  Future<List<PlaceReviewEntity>> getPlaceReviews(String placeId) async {
+    try {
+      final response = await _dioService.get(
+        ApiConstants.placeReviews(placeId),
+      );
+      final payload = _asMap(response.data);
+      final rawList = _extractReviews(payload);
+
+      final reviews = rawList
+          .whereType<Map>()
+          .map(
+            (item) =>
+                PlaceReviewModel.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList();
+
+      reviews.sort((a, b) {
+        final left = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final right = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return right.compareTo(left);
+      });
+
+      return reviews;
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération des avis: $e');
+    }
+  }
+
+  Future<PlaceReviewEntity> createReview({
+    required String placeId,
+    required String comment,
+  }) async {
+    try {
+      final response = await _dioService.post(
+        ApiConstants.reviews,
+        data: {'place_id': placeId, 'comment': comment},
+      );
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception('Code HTTP inattendu: ${response.statusCode}');
+      }
+
+      final payload = _asMap(response.data);
+      final rawReview = _extractCreatedReview(payload);
+      return PlaceReviewModel.fromJson(rawReview);
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Erreur lors de la création de l\'avis: $e');
+    }
+  }
+
   Future<List<PlaceEntity>> getNearbyPlaces({
     required double latitude,
     required double longitude,
@@ -131,6 +187,28 @@ class PlaceRepositoryImpl {
     }
 
     return const [];
+  }
+
+  List<dynamic> _extractReviews(Map<String, dynamic> payload) {
+    if (payload['data'] is List) {
+      return payload['data'] as List<dynamic>;
+    }
+    if (payload['reviews'] is List) {
+      return payload['reviews'] as List<dynamic>;
+    }
+    return const [];
+  }
+
+  Map<String, dynamic> _extractCreatedReview(Map<String, dynamic> payload) {
+    final data = payload['data'];
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Format de réponse invalide: data manquant');
+    }
+    final review = data['review'];
+    if (review is! Map<String, dynamic>) {
+      throw Exception('Format de réponse invalide: data.review manquant');
+    }
+    return review;
   }
 
   Map<String, dynamic> _asMap(dynamic payload) {
