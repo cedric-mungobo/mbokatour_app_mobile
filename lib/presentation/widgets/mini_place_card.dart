@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../core/services/media_cache_manager.dart';
 import '../../domain/entities/place_entity.dart';
 
 class MiniPlaceCard extends StatelessWidget {
@@ -42,6 +43,7 @@ class MiniPlaceCard extends StatelessWidget {
                 height: 92,
                 child: place.imageUrl != null && place.imageUrl!.isNotEmpty
                     ? CachedNetworkImage(
+                        cacheManager: MediaCacheManager.instance,
                         imageUrl: place.imageUrl!,
                         fit: BoxFit.cover,
                         errorWidget: (context, url, error) => Container(

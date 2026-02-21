@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+import '../../core/services/media_cache_manager.dart';
 import '../../domain/entities/place_entity.dart';
 import 'app_logo_widget.dart';
 
@@ -39,6 +40,7 @@ class PlaceCard extends StatelessWidget {
                   )
                 : hasImage
                 ? CachedNetworkImage(
+                    cacheManager: MediaCacheManager.instance,
                     imageUrl: place.imageUrl!,
                     fit: BoxFit.cover,
                     errorWidget: (context, url, error) => Container(

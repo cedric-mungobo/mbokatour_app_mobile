@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 import '../../core/services/dio_service.dart';
 import '../../domain/entities/category_entity.dart';
 import '../models/category_model.dart';
@@ -22,7 +24,8 @@ class CategoryRepositoryImpl {
           .map(CategoryModel.fromJson)
           .toList();
     } catch (e) {
-      throw Exception('Erreur lors du chargement des catégories: $e');
+      debugPrint('Error fetching categories: $e');
+      throw Exception('Erreur lors du chargement des catégories: ');
     }
   }
 
@@ -46,7 +49,9 @@ class CategoryRepositoryImpl {
           .toList()
         ..sort();
     } catch (e) {
-      throw Exception('Erreur lors du chargement des préférences: $e');
+
+        debugPrint('Error fetching user preferences: $e');
+      throw Exception('Erreur lors du chargement des préférences: ');
     }
   }
 
@@ -62,7 +67,8 @@ class CategoryRepositoryImpl {
         throw Exception(body is Map<String, dynamic> ? body['message'] : null);
       }
     } catch (e) {
-      throw Exception('Erreur lors de la sauvegarde des préférences: $e');
+      debugPrint('Error saving user preferences: $e');
+      throw Exception('Erreur lors de la sauvegarde des préférences: ');
     }
   }
 }

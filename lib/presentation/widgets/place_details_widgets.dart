@@ -409,6 +409,7 @@ class _MediaPreview extends StatelessWidget {
                     )
                   else if (_canRenderAsImage)
                     CachedNetworkImage(
+                      cacheManager: MediaCacheManager.instance,
                       imageUrl: media.url,
                       fit: BoxFit.cover,
                       errorWidget: (context, url, error) {
@@ -743,6 +744,7 @@ class _MediaViewerScreenState extends State<_MediaViewerScreen> {
                         maxScale: 4,
                         child: Center(
                           child: CachedNetworkImage(
+                            cacheManager: MediaCacheManager.instance,
                             imageUrl: item.url,
                             fit: BoxFit.contain,
                             errorWidget: (context, url, error) {

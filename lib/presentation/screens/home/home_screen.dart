@@ -98,6 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
           final isLoadingMore = _store.isPlacesLoadingMore.value;
           final places = _store.places.value;
           final isMuted = MediaSettingsService.isMuted.value;
+          final isOffline = _store.isOffline.value;
 
           return MediaQuery.removePadding(
             context: context,
@@ -127,12 +128,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               child: Center(child: CircularProgressIndicator()),
                             )
                           else if (places.isEmpty)
-                            const SizedBox(
+                            SizedBox(
                               height: 380,
                               child: Center(
                                 child: Text(
-                                  'Aucun lieu trouvé',
-                                  style: TextStyle(
+                                  isOffline
+                                      ? 'Aucune connexion et aucun lieu en cache'
+                                      : 'Aucun lieu trouvé',
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     color: Colors.white,
                                   ),

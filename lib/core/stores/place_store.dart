@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:dio/dio.dart';
+import '../../core/constants/storage_constants.dart';
 import '../services/cache_service.dart';
 import '../services/dio_service.dart';
+import '../../data/models/place_model.dart';
 import '../../data/repositories/place_repository_impl.dart';
 import '../../domain/entities/place_entity.dart';
 
@@ -20,8 +24,10 @@ class PlaceStore {
   final isPlaceLoading = signal(false);
   final errorMessage = signal<String?>(null);
   final hasMorePlaces = signal(false);
+  final isOffline = signal(false);
 
   PlaceRepositoryImpl? _repository;
+  SharedPreferences? _prefs;
   Future<void>? _initializing;
   Future<void>? _placesRequestInFlight;
   Future<void>? _placesLoadMoreInFlight;
@@ -46,6 +52,7 @@ class PlaceStore {
 
   Future<void> _initializeInternal() async {
     final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
     final cacheService = CacheService(prefs);
     final dioService = DioService(cacheService);
     _repository = PlaceRepositoryImpl(dioService: dioService);
@@ -86,14 +93,29 @@ class PlaceStore {
           query: normalizedQuery,
         );
         places.value = result.places;
+        isOffline.value = false;
         _currentPlacesPage = result.currentPage;
         _lastPlacesPage = result.lastPage;
         hasMorePlaces.value = result.hasMore;
         _lastPlacesQuery = normalizedQuery;
         _lastPlacesFetchedAt = DateTime.now();
+        await _savePlacesToDiskCache(result.places);
       } catch (e) {
-        errorMessage.value = _buildLoadPlacesErrorMessage(e);
-        hasMorePlaces.value = false;
+        final hasNetworkIssue = _isNetworkIssue(e);
+        isOffline.value = hasNetworkIssue;
+
+        final restored = hasNetworkIssue
+            ? await _tryLoadPlacesFromDiskCache()
+            : false;
+        if (restored) {
+          errorMessage.value = null;
+          hasMorePlaces.value = false;
+          _lastPlacesQuery = normalizedQuery;
+          _lastPlacesFetchedAt = DateTime.now();
+        } else {
+          errorMessage.value = _buildLoadPlacesErrorMessage(e);
+          hasMorePlaces.value = false;
+        }
       } finally {
         isPlacesLoading.value = false;
         _placesRequestInFlight = null;
@@ -128,6 +150,7 @@ class PlaceStore {
           page: nextPage,
           query: normalizedQuery,
         );
+        isOffline.value = false;
         final current = places.value;
         final merged = <PlaceEntity>[...current, ...result.places];
         // Avoid duplicates in case the API repeats items between pages.
@@ -140,6 +163,7 @@ class PlaceStore {
         _lastPlacesPage = result.lastPage;
         hasMorePlaces.value = result.hasMore;
       } catch (e) {
+        isOffline.value = _isNetworkIssue(e);
         errorMessage.value = _buildLoadPlacesErrorMessage(e);
       } finally {
         isPlacesLoadingMore.value = false;
@@ -169,8 +193,10 @@ class PlaceStore {
         longitude: longitude,
         radiusKm: radiusKm,
       );
+      isOffline.value = false;
       nearbyPlaces.value = result;
     } catch (e) {
+      isOffline.value = _isNetworkIssue(e);
       nearbyPlaces.value = [];
       errorMessage.value = _buildLoadPlacesErrorMessage(e);
     } finally {
@@ -206,12 +232,24 @@ class PlaceStore {
 
       try {
         final place = await repository.getPlaceById(normalizedId);
+        isOffline.value = false;
         selectedPlace.value = place;
         _placeByIdCache[normalizedId] = place;
         _placeByIdFetchedAt[normalizedId] = DateTime.now();
+        await _savePlaceDetailToDiskCache(place);
       } catch (e) {
-        selectedPlace.value = null;
-        errorMessage.value = _buildLoadPlaceErrorMessage(e);
+        final hasNetworkIssue = _isNetworkIssue(e);
+        isOffline.value = hasNetworkIssue;
+
+        final restored = hasNetworkIssue
+            ? await _tryLoadPlaceDetailFromDiskCache(normalizedId)
+            : false;
+        if (restored) {
+          errorMessage.value = null;
+        } else {
+          selectedPlace.value = null;
+          errorMessage.value = _buildLoadPlaceErrorMessage(e);
+        }
       } finally {
         isPlaceLoading.value = false;
         _placeRequestInFlight.remove(normalizedId);
@@ -232,6 +270,146 @@ class PlaceStore {
       return 'Connexion impossible au serveur. Vérifiez internet puis réessayez.';
     }
     return 'Erreur lors du chargement des lieux.';
+  }
+
+  bool _isNetworkIssue(Object error) {
+    if (error is DioException) {
+      return error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout;
+    }
+    final lower = error.toString().toLowerCase();
+    return lower.contains('socketexception') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('connection refused') ||
+        lower.contains('network is unreachable') ||
+        lower.contains('connexion impossible') ||
+        lower.contains('internet');
+  }
+
+  Future<void> _savePlacesToDiskCache(List<PlaceEntity> entries) async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    final payload = entries.map(_placeToCacheJson).toList(growable: false);
+    await prefs.setString(StorageConstants.placesListCache, jsonEncode(payload));
+    await prefs.setString(
+      StorageConstants.placesListCachedAt,
+      DateTime.now().toIso8601String(),
+    );
+  }
+
+  Future<bool> _tryLoadPlacesFromDiskCache() async {
+    final prefs = _prefs;
+    if (prefs == null) return false;
+
+    final raw = prefs.getString(StorageConstants.placesListCache);
+    if (raw == null || raw.isEmpty) return false;
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return false;
+      final restored = <PlaceEntity>[];
+      for (final item in decoded) {
+        if (item is! Map) continue;
+        restored.add(
+          PlaceModel.fromJson(Map<String, dynamic>.from(item)),
+        );
+      }
+      if (restored.isEmpty) return false;
+      places.value = restored;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _savePlaceDetailToDiskCache(PlaceEntity place) async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    final key = _placeDetailCacheKey(place.id);
+    await prefs.setString(key, jsonEncode(_placeToCacheJson(place)));
+  }
+
+  Future<bool> _tryLoadPlaceDetailFromDiskCache(String placeId) async {
+    final prefs = _prefs;
+    if (prefs == null) return false;
+
+    final raw = prefs.getString(_placeDetailCacheKey(placeId));
+    if (raw == null || raw.isEmpty) return false;
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return false;
+      final restored = PlaceModel.fromJson(Map<String, dynamic>.from(decoded));
+      selectedPlace.value = restored;
+      _placeByIdCache[placeId] = restored;
+      _placeByIdFetchedAt[placeId] = DateTime.now();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String _placeDetailCacheKey(String placeId) =>
+      '${StorageConstants.placeDetailCachePrefix}$placeId';
+
+  Map<String, dynamic> _placeToCacheJson(PlaceEntity place) {
+    return <String, dynamic>{
+      'id': place.id,
+      'name': place.name,
+      'slug': place.slug,
+      'description': place.description,
+      'image_url': place.imageUrl,
+      'video_url': place.videoUrl,
+      'lat': place.latitude,
+      'lng': place.longitude,
+      'address': place.address,
+      'ville': place.city,
+      'commune': place.commune,
+      'phone': place.phone,
+      'whatsapp': place.whatsapp,
+      'website': place.website,
+      'opening_hours': place.openingHours,
+      'rating': place.rating,
+      'category': place.category,
+      'categories': place.categories
+          .map((name) => <String, dynamic>{'name': name})
+          .toList(growable: false),
+      'is_active': place.isActive,
+      'is_verified': place.isVerified,
+      'is_recommended': place.isRecommended,
+      'prices': place.prices
+          .map(
+            (price) => <String, dynamic>{
+              'id': price.id,
+              'label': price.label,
+              'price': price.price,
+              'currency': price.currency,
+              'description': price.description,
+            },
+          )
+          .toList(growable: false),
+      'stats': <String, dynamic>{
+        'likes_count': place.stats.likesCount,
+        'visits_count': place.stats.visitsCount,
+        'reviews_count': place.stats.reviewsCount,
+        'favorites_count': place.stats.favoritesCount,
+      },
+      'distance': place.distance,
+      'created_at': place.createdAt?.toIso8601String(),
+      'updated_at': place.updatedAt?.toIso8601String(),
+      'media': place.media
+          .map(
+            (media) => <String, dynamic>{
+              'id': media.id,
+              'type': media.type,
+              'is_primary': media.isPrimary,
+              if (media.isVideo) 'video_url': media.url else 'image_url': media.url,
+            },
+          )
+          .toList(growable: false),
+    };
   }
 
   String _buildLoadPlaceErrorMessage(Object error) {

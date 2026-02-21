@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import '../../../core/services/media_settings_service.dart';
+import '../../../core/services/media_cache_manager.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/stores/place_store.dart';
 import '../../../domain/entities/place_entity.dart';
@@ -125,6 +126,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     return Watch((context) {
       final isLoading = _store.isPlaceLoading.value;
       final place = _store.selectedPlace.value;
+      final isOffline = _store.isOffline.value;
 
       if (isLoading) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -134,9 +136,20 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         return Scaffold(
           appBar: AppBar(title: const Text('Détail du lieu')),
           body: Center(
-            child: ElevatedButton(
-              onPressed: () => _loadPlaceDetails(forceRefresh: true),
-              child: const Text('Réessayer'),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isOffline
+                      ? 'Aucune connexion et aucun détail  disponible '
+                      : 'Détail du lieu indisponible',
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () => _loadPlaceDetails(forceRefresh: true),
+                  child: const Text('Réessayer'),
+                ),
+              ],
             ),
           ),
         );
@@ -426,7 +439,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
 
               if (place.prices.isNotEmpty) ...[
                 const SizedBox(height: 18),
-                const _SectionTitle('Prix'),
+                const _SectionTitle('Tarifs | Services | Activités'),
                 _SectionCard(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
