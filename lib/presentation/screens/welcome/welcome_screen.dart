@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -140,7 +141,7 @@ class WelcomeScreen extends StatelessWidget {
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.g_mobiledata, size: 24),
+                              Icon(AppIcons.g_mobiledata, size: 24),
                               SizedBox(width: 8),
                               Text(
                                 'Se connecter avec Google',

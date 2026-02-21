@@ -40,6 +40,7 @@ class PlaceStore {
   final Map<String, PlaceEntity> _placeByIdCache = {};
   final Map<String, DateTime> _placeByIdFetchedAt = {};
   String _lastPlacesQuery = '';
+  String _lastPlacesCategory = '';
   DateTime? _lastPlacesFetchedAt;
   int _currentPlacesPage = 0;
   int _lastPlacesPage = 1;
@@ -65,12 +66,14 @@ class PlaceStore {
 
   Future<void> loadPlaces({
     String query = '',
+    String? categorySlug,
     bool forceRefresh = false,
   }) async {
     if (_repository == null) await init();
     final repository = _repository;
     if (repository == null) return;
     final normalizedQuery = query.trim();
+    final normalizedCategory = categorySlug?.trim() ?? '';
 
     final isRecentPlacesCache =
         _lastPlacesFetchedAt != null &&
@@ -78,6 +81,7 @@ class PlaceStore {
     final canUsePlacesCache =
         !forceRefresh &&
         normalizedQuery == _lastPlacesQuery &&
+        normalizedCategory == _lastPlacesCategory &&
         places.value.isNotEmpty &&
         isRecentPlacesCache;
     if (canUsePlacesCache) {
@@ -96,6 +100,7 @@ class PlaceStore {
         final result = await repository.getPlacesPage(
           page: 1,
           query: normalizedQuery,
+          categorySlug: normalizedCategory,
         );
         places.value = result.places;
         isOffline.value = false;
@@ -103,6 +108,7 @@ class PlaceStore {
         _lastPlacesPage = result.lastPage;
         hasMorePlaces.value = result.hasMore;
         _lastPlacesQuery = normalizedQuery;
+        _lastPlacesCategory = normalizedCategory;
         _lastPlacesFetchedAt = DateTime.now();
         await _savePlacesToDiskCache(result.places);
       } catch (e) {
@@ -116,6 +122,7 @@ class PlaceStore {
           errorMessage.value = null;
           hasMorePlaces.value = false;
           _lastPlacesQuery = normalizedQuery;
+          _lastPlacesCategory = normalizedCategory;
           _lastPlacesFetchedAt = DateTime.now();
         } else {
           errorMessage.value = _buildLoadPlacesErrorMessage(e);
@@ -131,16 +138,18 @@ class PlaceStore {
     return task;
   }
 
-  Future<void> loadMorePlaces({String query = ''}) async {
+  Future<void> loadMorePlaces({String query = '', String? categorySlug}) async {
     if (_repository == null) await init();
     final repository = _repository;
     if (repository == null) return;
 
     final normalizedQuery = query.trim();
+    final normalizedCategory = categorySlug?.trim() ?? '';
     if (isPlacesLoading.value || isPlacesLoadingMore.value) return;
     if (_placesLoadMoreInFlight != null) return _placesLoadMoreInFlight!;
     if (!hasMorePlaces.value) return;
     if (normalizedQuery != _lastPlacesQuery) return;
+    if (normalizedCategory != _lastPlacesCategory) return;
 
     final nextPage = _currentPlacesPage + 1;
     if (nextPage > _lastPlacesPage) {
@@ -154,6 +163,7 @@ class PlaceStore {
         final result = await repository.getPlacesPage(
           page: nextPage,
           query: normalizedQuery,
+          categorySlug: normalizedCategory,
         );
         isOffline.value = false;
         final current = places.value;

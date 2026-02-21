@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import '../../core/services/media_cache_manager.dart';
 import '../../domain/entities/place_entity.dart';
 
@@ -48,13 +49,13 @@ class MiniPlaceCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         errorWidget: (context, url, error) => Container(
                           color: Colors.grey.shade200,
-                          child: const Icon(Icons.broken_image_outlined),
+                          child: const Icon(AppIcons.broken_image_outlined),
                         ),
                       )
                     : Container(
                         color: Colors.grey.shade200,
                         child: const Icon(
-                          Icons.image_outlined,
+                          AppIcons.image_outlined,
                           color: Colors.black45,
                         ),
                       ),
@@ -106,7 +107,7 @@ class MiniPlaceCard extends StatelessWidget {
             ),
             const Padding(
               padding: EdgeInsets.only(right: 8),
-              child: Icon(Icons.chevron_right),
+              child: Icon(AppIcons.chevron_right),
             ),
           ],
         ),

@@ -35,12 +35,20 @@ class PlaceRepositoryImpl {
   Future<PaginatedPlacesResult> getPlacesPage({
     required int page,
     String query = '',
+    String? categorySlug,
   }) async {
     try {
-      final isSearch = query.trim().isNotEmpty;
+      final normalizedQuery = query.trim();
+      final normalizedCategory = categorySlug?.trim();
+      final isSearch = normalizedQuery.isNotEmpty;
       final response = await _dioService.get(
         isSearch ? ApiConstants.placeSearch : ApiConstants.places,
-        queryParameters: {'page': page, if (isSearch) 'q': query.trim()},
+        queryParameters: {
+          'page': page,
+          if (isSearch) 'q': normalizedQuery,
+          if (normalizedCategory != null && normalizedCategory.isNotEmpty)
+            'category': normalizedCategory,
+        },
       );
       final payload = _asMap(response.data);
       final List<dynamic> data = _extractPlaces(payload);

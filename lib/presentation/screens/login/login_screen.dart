@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -107,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         title: const Text('Connexion'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(AppIcons.arrow_back),
           onPressed: () => context.go('/'),
         ),
       ),
@@ -134,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Email ou téléphone',
                   hintText: 'jean@example.com ou +243...',
-                  prefixIcon: Icon(Icons.person_outline),
+                  prefixIcon: Icon(AppIcons.person_outline),
                 ),
               ),
               const SizedBox(height: 16),
@@ -143,7 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: 'Mot de passe',
-                  prefixIcon: Icon(Icons.lock_outline),
+                  prefixIcon: Icon(AppIcons.lock_outline),
                 ),
               ),
               const SizedBox(height: 16),

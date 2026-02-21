@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -79,7 +80,7 @@ class _SectionDetailsScreenState extends State<SectionDetailsScreen> {
         appBar: AppBar(
           title: Text(section?.name ?? 'Section spéciale'),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(AppIcons.arrow_back),
             onPressed: () {
               if (context.canPop()) {
                 context.pop();
@@ -92,7 +93,7 @@ class _SectionDetailsScreenState extends State<SectionDetailsScreen> {
             IconButton(
               tooltip: 'Actualiser',
               onPressed: _loadSection,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(AppIcons.refresh),
             ),
           ],
         ),

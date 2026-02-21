@@ -1,15 +1,21 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mbokatour_app_mobile/core/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/media_settings_service.dart';
+import '../../../core/services/cache_service.dart';
+import '../../../core/services/dio_service.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import '../../../core/stores/place_store.dart';
 import '../../../domain/entities/place_entity.dart';
+import '../../../domain/entities/category_entity.dart';
+import '../../../data/repositories/category_repository_impl.dart';
 import '../../widgets/app_logo_widget.dart';
 import '../../widgets/bored_bottom_sheet.dart';
 import '../../widgets/place_card.dart';
@@ -25,6 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
   Timer? _searchDebounce;
   final _store = PlaceStore.instance;
+  List<CategoryEntity> _categories = const [];
+  String? _selectedCategorySlug;
 
   @override
   void initState() {
@@ -41,15 +49,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initializeDependencies() async {
     await _store.init();
+    await _loadCategories();
     await _loadPlaces();
     if (mounted && _store.errorMessage.value != null) {
       NotificationService.error(context, _store.errorMessage.value!);
     }
   }
 
+  Future<void> _loadCategories() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheService = CacheService(prefs);
+      final repository = CategoryRepositoryImpl(
+        dioService: DioService(cacheService),
+      );
+      final categories = await repository.getCategories();
+      if (!mounted) return;
+      setState(() => _categories = categories);
+    } catch (_) {}
+  }
+
   Future<void> _loadPlaces({bool forceRefresh = false}) async {
     await _store.loadPlaces(
       query: _searchController.text,
+      categorySlug: _selectedCategorySlug,
       forceRefresh: forceRefresh,
     );
     if (mounted && _store.errorMessage.value != null) {
@@ -84,6 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
+    final topInset = MediaQuery.of(context).padding.top;
+    const topFiltersHeight = 42.0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -112,7 +137,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           _store.hasMorePlaces.value &&
                           !isLoading &&
                           !isLoadingMore) {
-                        _store.loadMorePlaces(query: _searchController.text);
+                        _store.loadMorePlaces(
+                          query: _searchController.text,
+                          categorySlug: _selectedCategorySlug,
+                        );
                       }
                       return false;
                     },
@@ -120,7 +148,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       onRefresh: () => _loadPlaces(forceRefresh: true),
                       child: ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.only(top: 0, bottom: 0),
+                        padding: EdgeInsets.only(
+                          top: topInset + topFiltersHeight + 20,
+                          bottom: 0,
+                        ),
                         children: [
                           if (isLoading)
                             const SizedBox(
@@ -134,6 +165,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Text(
                                   isOffline
                                       ? 'Aucune connexion et aucun lieu en cache'
+                                      : _selectedCategorySlug != null
+                                      ? 'Aucun lieu pour ce filtre'
                                       : 'Aucun lieu trouvé',
                                   style: const TextStyle(
                                     fontSize: 16,
@@ -171,6 +204,46 @@ class _HomeScreenState extends State<HomeScreen> {
                               places.isNotEmpty &&
                               !_store.hasMorePlaces.value)
                             const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 10,
+                  right: 10,
+                  top: topInset + 6,
+                  child: SizedBox(
+                    height: topFiltersHeight,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _HomeFilterChip(
+                            label: 'Decouverte',
+                            isActive: _selectedCategorySlug == null,
+                            onTap: () {
+                              if (_selectedCategorySlug == null) return;
+                              setState(() => _selectedCategorySlug = null);
+                              _loadPlaces(forceRefresh: true);
+                            },
+                          ),
+                          for (final category in _categories) ...[
+                            const SizedBox(width: 8),
+                            _HomeFilterChip(
+                              label: category.name,
+                              isActive: _selectedCategorySlug == category.slug,
+                              onTap: () {
+                                setState(() {
+                                  _selectedCategorySlug =
+                                      _selectedCategorySlug == category.slug
+                                      ? null
+                                      : category.slug;
+                                });
+                                _loadPlaces(forceRefresh: true);
+                              },
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -219,6 +292,44 @@ class _HomeScreenState extends State<HomeScreen> {
     final height = double.tryParse(match.group(2)!);
     if (width == null || height == null || height == 0) return null;
     return width / height;
+  }
+}
+
+class _HomeFilterChip extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _HomeFilterChip({
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isActive ? Colors.white : Colors.white24,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Colors.black87 : Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -271,7 +382,7 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
           children: [
             const AppLogoWidget(size: 50),
             const SizedBox(width: 8),
-            const Icon(Icons.search, color: Colors.black45, size: 20),
+            const Icon(AppIcons.search, color: Colors.black45, size: 20),
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
@@ -308,7 +419,7 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
                 padding: EdgeInsets.zero,
                 onPressed: widget.onBoredTap,
                 icon: const Icon(
-                  Icons.sentiment_satisfied_alt_outlined,
+                  AppIcons.sentiment_satisfied_alt_outlined,
                   size: 18,
                   color: Colors.black54,
                 ),
@@ -322,7 +433,7 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
                 padding: EdgeInsets.zero,
                 onPressed: widget.onContributeTap,
                 icon: const Icon(
-                  Icons.add_circle_outline_rounded,
+                  AppIcons.add_circle_outline_rounded,
                   size: 18,
                   color: Colors.black54,
                 ),
@@ -336,7 +447,7 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
                 padding: EdgeInsets.zero,
                 onPressed: widget.onProfileTap,
                 icon: const Icon(
-                  Icons.person_outline_rounded,
+                  AppIcons.person_outline_rounded,
                   size: 18,
                   color: Colors.black54,
                 ),

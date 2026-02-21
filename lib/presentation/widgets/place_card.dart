@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -53,7 +54,7 @@ class PlaceCard extends StatelessWidget {
                       ),
                       child: const Center(
                         child: Icon(
-                          Icons.photo,
+                          AppIcons.photo,
                           size: 48,
                           color: Colors.white70,
                         ),
@@ -117,7 +118,7 @@ class PlaceCard extends StatelessWidget {
                 children: [
                   if (place.hasVideo) ...[
                     const Icon(
-                      Icons.videocam_outlined,
+                      AppIcons.videocam_outlined,
                       size: 14,
                       color: Colors.white,
                     ),
@@ -298,7 +299,7 @@ class _AutoPlayVideoBackgroundState extends State<_AutoPlayVideoBackground> {
                 ),
               ),
               child: const Center(
-                child: Icon(Icons.videocam, size: 48, color: Colors.white70),
+                child: Icon(AppIcons.videocam, size: 48, color: Colors.white70),
               ),
             )
           : FittedBox(

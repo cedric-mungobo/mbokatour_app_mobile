@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import '../../../core/services/notification_service.dart';
@@ -87,7 +88,7 @@ class _NearbyPlacesScreenState extends State<NearbyPlacesScreen> {
         appBar: AppBar(
           title: const Text('Lieux proches'),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(AppIcons.arrow_back),
             onPressed: () => context.go('/home'),
           ),
           actions: [
@@ -128,7 +129,7 @@ class _NearbyPlacesScreenState extends State<NearbyPlacesScreen> {
             ),
             IconButton(
               tooltip: 'Actualiser',
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(AppIcons.refresh),
               onPressed: _loadNearbyPlaces,
             ),
           ],

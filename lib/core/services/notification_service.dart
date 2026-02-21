@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 
 class NotificationService {
   static const Duration _defaultDuration = Duration(seconds: 3);
@@ -8,7 +9,7 @@ class NotificationService {
       context: context,
       message: message,
       backgroundColor: Colors.blue.shade700,
-      icon: Icons.info_outline,
+      icon: AppIcons.info_outline,
     );
   }
 
@@ -17,7 +18,7 @@ class NotificationService {
       context: context,
       message: message,
       backgroundColor: Colors.green.shade700,
-      icon: Icons.check_circle_outline,
+      icon: AppIcons.check_circle_outline,
     );
   }
 
@@ -26,7 +27,7 @@ class NotificationService {
       context: context,
       message: message,
       backgroundColor: Colors.orange.shade800,
-      icon: Icons.warning_amber_outlined,
+      icon: AppIcons.warning_amber_outlined,
     );
   }
 
@@ -35,7 +36,7 @@ class NotificationService {
       context: context,
       message: message,
       backgroundColor: Colors.red.shade700,
-      icon: Icons.error_outline,
+      icon: AppIcons.error_outline,
     );
   }
 

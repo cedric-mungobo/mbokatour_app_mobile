@@ -82,7 +82,7 @@ class _MiniPlaceMap extends StatelessWidget {
                             width: 44,
                             height: 44,
                             child: const Icon(
-                              Icons.location_on,
+                              AppIcons.location_on,
                               color: AppTheme.accentRed,
                               size: 36,
                             ),
@@ -108,7 +108,7 @@ class _MiniPlaceMap extends StatelessWidget {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.map_outlined, color: Colors.white, size: 16),
+                        Icon(AppIcons.map_outlined, color: Colors.white, size: 16),
                         SizedBox(width: 8),
                         Text(
                           'Voir sur la carte',
@@ -245,7 +245,7 @@ class _DetailGridItem extends StatelessWidget {
                 ),
                 if (onTap != null)
                   const Icon(
-                    Icons.open_in_new,
+                    AppIcons.open_in_new,
                     size: 14,
                     color: Colors.black45,
                   ),
@@ -282,7 +282,7 @@ class _OpeningHourRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(Icons.schedule_outlined, size: 16, color: Colors.grey.shade700),
+          Icon(AppIcons.schedule_outlined, size: 16, color: Colors.grey.shade700),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -365,7 +365,7 @@ class _ReviewTile extends StatelessWidget {
                     ? NetworkImage(review.user!.avatar!)
                     : null,
                 child: review.user?.avatar == null
-                    ? const Icon(Icons.person, size: 16, color: Colors.black54)
+                    ? const Icon(AppIcons.person, size: 16, color: Colors.black54)
                     : null,
               ),
               const SizedBox(width: 10),
@@ -454,13 +454,13 @@ class _MediaPreview extends StatelessWidget {
                       imageUrl: media.url,
                       fit: BoxFit.cover,
                       errorWidget: (context, url, error) {
-                        return const Center(child: Icon(Icons.broken_image));
+                        return const Center(child: Icon(AppIcons.broken_image));
                       },
                     )
                   else
                     Center(
                       child: Icon(
-                        media.isVideo ? Icons.videocam : Icons.image,
+                        media.isVideo ? AppIcons.videocam : AppIcons.image,
                         color: Colors.grey.shade700,
                         size: 36,
                       ),
@@ -471,7 +471,7 @@ class _MediaPreview extends StatelessWidget {
                     child: Row(
                       children: [
                         Icon(
-                          media.isVideo ? Icons.videocam : Icons.photo,
+                          media.isVideo ? AppIcons.videocam : AppIcons.photo,
                           size: 16,
                           color: Colors.white,
                         ),
@@ -710,7 +710,7 @@ class _InlineAutoPlayVideoState extends State<_InlineAutoPlayVideo> {
       return Container(
         color: Colors.black12,
         alignment: Alignment.center,
-        child: const Icon(Icons.videocam_off, color: Colors.white70, size: 34),
+        child: const Icon(AppIcons.videocam_off, color: Colors.white70, size: 34),
       );
     }
 
@@ -790,7 +790,7 @@ class _MediaViewerScreenState extends State<_MediaViewerScreen> {
                             fit: BoxFit.contain,
                             errorWidget: (context, url, error) {
                               return const Icon(
-                                Icons.broken_image,
+                                AppIcons.broken_image,
                                 color: Colors.white70,
                                 size: 72,
                               );
@@ -815,7 +815,7 @@ class _MediaViewerScreenState extends State<_MediaViewerScreen> {
                       ),
                       child: IconButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close, color: Colors.white),
+                        icon: const Icon(AppIcons.close, color: Colors.white),
                       ),
                     ),
                     const Spacer(),
@@ -959,7 +959,7 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
 
     if (_hasError || _controller == null) {
       return const Center(
-        child: Icon(Icons.videocam_off, color: Colors.white70, size: 72),
+        child: Icon(AppIcons.videocam_off, color: Colors.white70, size: 72),
       );
     }
 
@@ -993,8 +993,8 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
                         onPressed: _togglePlayPause,
                         icon: Icon(
                           _isPlaying
-                              ? Icons.pause_circle_filled
-                              : Icons.play_circle_fill,
+                              ? AppIcons.pause_circle_filled
+                              : AppIcons.play_circle_fill,
                           color: Colors.white,
                           size: 30,
                         ),
@@ -1007,7 +1007,7 @@ class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
                             _controller?.setVolume(muted ? 0 : 1);
                           },
                           icon: Icon(
-                            isMuted ? Icons.volume_off : Icons.volume_up,
+                            isMuted ? AppIcons.volume_off : AppIcons.volume_up,
                             color: Colors.white,
                             size: 26,
                           ),

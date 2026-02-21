@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 
 enum BoredAction { nearby, special }
 
@@ -29,14 +30,14 @@ class _BoredBottomSheet extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             _ActionCard(
-              icon: Icons.near_me_outlined,
+              icon: AppIcons.near_me_outlined,
               title: 'Les lieux proches de moi',
               subtitle: 'Découvrir les meilleurs spots autour de vous',
               onTap: () => Navigator.of(context).pop(BoredAction.nearby),
             ),
             const SizedBox(height: 10),
             _ActionCard(
-              icon: Icons.auto_awesome_outlined,
+              icon: AppIcons.auto_awesome_outlined,
               title: 'Section spéciale',
               subtitle: 'Sélection spéciale pour sortir maintenant',
               onTap: () => Navigator.of(context).pop(BoredAction.special),
@@ -104,7 +105,7 @@ class _ActionCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right),
+            const Icon(AppIcons.chevron_right),
           ],
         ),
       ),

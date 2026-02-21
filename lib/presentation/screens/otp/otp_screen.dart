@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -127,7 +128,7 @@ class _OtpScreenState extends State<OtpScreen> {
       appBar: AppBar(
         title: const Text('Vérification OTP'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(AppIcons.arrow_back),
           onPressed: () => context.go('/login'),
         ),
       ),
@@ -155,7 +156,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Email',
                     hintText: 'votre@email.com',
-                    prefixIcon: Icon(Icons.email_outlined),
+                    prefixIcon: Icon(AppIcons.email_outlined),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -166,7 +167,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Code OTP',
                     hintText: '000000',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    prefixIcon: Icon(AppIcons.lock_outline),
                   ),
                 ),
                 const SizedBox(height: 10),

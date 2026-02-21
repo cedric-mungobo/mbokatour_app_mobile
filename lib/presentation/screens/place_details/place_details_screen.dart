@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -219,7 +220,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         appBar: AppBar(
           title: const Text('Détail du lieu'),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(AppIcons.arrow_back),
             onPressed: () {
               if (context.canPop()) {
                 context.pop();
@@ -247,19 +248,19 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 runSpacing: 8,
                 children: [
                   _StatMiniItem(
-                    icon: Icons.favorite_outline,
+                    icon: AppIcons.favorite_outline,
                     value: place.stats.likesCount.toString(),
                   ),
                   _StatMiniItem(
-                    icon: Icons.visibility_outlined,
+                    icon: AppIcons.visibility_outlined,
                     value: place.stats.visitsCount.toString(),
                   ),
                   _StatMiniItem(
-                    icon: Icons.rate_review_outlined,
+                    icon: AppIcons.rate_review_outlined,
                     value: place.stats.reviewsCount.toString(),
                   ),
                   _StatMiniItem(
-                    icon: Icons.bookmark_border_outlined,
+                    icon: AppIcons.bookmark_border_outlined,
                     value: place.stats.favoritesCount.toString(),
                   ),
                 ],
@@ -286,7 +287,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                           const Tooltip(
                             message: 'Lieu certifié',
                             child: Icon(
-                              Icons.verified_rounded,
+                              AppIcons.verified_rounded,
                               color: Colors.blue,
                               size: 24,
                             ),
@@ -296,7 +297,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                     ),
                   ),
                   if (place.rating != null) ...[
-                    const Icon(Icons.star, color: Colors.amber, size: 28),
+                    const Icon(AppIcons.star, color: Colors.amber, size: 28),
                     const SizedBox(width: 4),
                     Row(
                       children: [
@@ -338,7 +339,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                           children: [
                             Expanded(
                               child: _DetailGridItem(
-                                icon: Icons.location_city_outlined,
+                                icon: AppIcons.location_city_outlined,
                                 label: 'Ville',
                                 value: place.city!,
                               ),
@@ -346,7 +347,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: _DetailGridItem(
-                                icon: Icons.apartment_outlined,
+                                icon: AppIcons.apartment_outlined,
                                 label: 'Commune',
                                 value: place.commune!,
                               ),
@@ -355,14 +356,14 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                         )
                       else if (hasCity)
                         _DetailGridItem(
-                          icon: Icons.location_city_outlined,
+                          icon: AppIcons.location_city_outlined,
                           label: 'Ville',
                           value: place.city!,
                           fullWidth: true,
                         )
                       else if (hasCommune)
                         _DetailGridItem(
-                          icon: Icons.apartment_outlined,
+                          icon: AppIcons.apartment_outlined,
                           label: 'Commune',
                           value: place.commune!,
                           fullWidth: true,
@@ -370,7 +371,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                       if (hasAddress) ...[
                         const SizedBox(height: 10),
                         _DetailGridItem(
-                          icon: Icons.location_on_outlined,
+                          icon: AppIcons.location_on_outlined,
                           label: 'Adresse',
                           value: place.address!,
                           fullWidth: true,
@@ -379,7 +380,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                       if (hasDistance) ...[
                         const SizedBox(height: 10),
                         _DetailGridItem(
-                          icon: Icons.social_distance_outlined,
+                          icon: AppIcons.social_distance_outlined,
                           label: 'Distance',
                           value: '${place.distance} km',
                           fullWidth: true,
@@ -445,7 +446,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                           children: [
                             Expanded(
                               child: _DetailGridItem(
-                                icon: Icons.phone_outlined,
+                                icon: AppIcons.phone_outlined,
                                 label: 'Téléphone',
                                 value: place.phone!,
                                 onTap: () => _openPhone(place.phone!),
@@ -454,7 +455,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: _DetailGridItem(
-                                icon: Icons.chat_outlined,
+                                icon: AppIcons.chat_outlined,
                                 label: 'WhatsApp',
                                 value: place.whatsapp!,
                                 onTap: () => _openWhatsApp(place.whatsapp!),
@@ -464,7 +465,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                         )
                       else if (hasPhone)
                         _DetailGridItem(
-                          icon: Icons.phone_outlined,
+                          icon: AppIcons.phone_outlined,
                           label: 'Téléphone',
                           value: place.phone!,
                           fullWidth: true,
@@ -472,7 +473,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                         )
                       else if (hasWhatsapp)
                         _DetailGridItem(
-                          icon: Icons.chat_outlined,
+                          icon: AppIcons.chat_outlined,
                           label: 'WhatsApp',
                           value: place.whatsapp!,
                           fullWidth: true,
@@ -481,7 +482,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                       if (hasWebsite) ...[
                         const SizedBox(height: 10),
                         _DetailGridItem(
-                          icon: Icons.language_outlined,
+                          icon: AppIcons.language_outlined,
                           label: 'Site web',
                           value: place.website!,
                           fullWidth: true,
@@ -525,7 +526,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                                 ? constraints.maxWidth
                                 : itemWidth,
                             child: _DetailGridItem(
-                              icon: Icons.sell_outlined,
+                              icon: AppIcons.sell_outlined,
                               label: price.label,
                               value:
                                   '${price.price ?? '-'} ${price.currency ?? ''}'
@@ -570,7 +571,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Icon(Icons.send_outlined),
+                            : const Icon(AppIcons.send_outlined),
                         label: Text(
                           isSubmittingReview
                               ? 'Publication...'
@@ -627,7 +628,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () => _openDirections(place),
-                  icon: const Icon(Icons.directions),
+                  icon: const Icon(AppIcons.directions),
                   label: const Text('Obtenir l\'itinéraire'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,

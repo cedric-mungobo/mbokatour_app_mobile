@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:signals_flutter/signals_flutter.dart';
@@ -322,7 +323,7 @@ class _ContributeScreenState extends State<ContributeScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(AppIcons.arrow_back),
           onPressed: () => context.go('/home'),
         ),
         title: const Text('Contribuer'),
@@ -436,7 +437,7 @@ class _ContributeScreenState extends State<ContributeScreen> {
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.my_location_outlined),
+                    : const Icon(AppIcons.my_location_outlined),
                 label: const Text('Prendre ma position actuelle'),
               ),
               if (_latitudeController.text.isNotEmpty &&
@@ -522,7 +523,7 @@ class _ContributeScreenState extends State<ContributeScreen> {
                   ),
                   OutlinedButton.icon(
                     onPressed: _addPriceItem,
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(AppIcons.add),
                     label: const Text('Ajouter'),
                   ),
                 ],
@@ -558,7 +559,7 @@ class _ContributeScreenState extends State<ContributeScreen> {
                             const Spacer(),
                             IconButton(
                               onPressed: () => _removePriceItem(index),
-                              icon: const Icon(Icons.delete_outline),
+                              icon: const Icon(AppIcons.delete_outline),
                               tooltip: 'Supprimer',
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
@@ -651,7 +652,7 @@ class _ContributeScreenState extends State<ContributeScreen> {
                   ),
                   OutlinedButton.icon(
                     onPressed: _pickPhotos,
-                    icon: const Icon(Icons.add_photo_alternate_outlined),
+                    icon: const Icon(AppIcons.add_photo_alternate_outlined),
                     label: const Text('Ajouter'),
                   ),
                 ],
@@ -694,7 +695,7 @@ class _ContributeScreenState extends State<ContributeScreen> {
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
-                                Icons.close,
+                                AppIcons.close,
                                 size: 14,
                                 color: Colors.white,
                               ),
@@ -717,7 +718,7 @@ class _ContributeScreenState extends State<ContributeScreen> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.send_outlined),
+                      : const Icon(AppIcons.send_outlined),
                   label: Text(
                     _isSubmitting.value
                         ? 'Envoi...'

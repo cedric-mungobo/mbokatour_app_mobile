@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -47,7 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(AppIcons.arrow_back),
           onPressed: () => context.go('/home'),
         ),
         title: const Text('Profil'),
@@ -74,7 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ? NetworkImage(user.photoUrl!)
                     : null,
                 child: (user.photoUrl == null || user.photoUrl!.isEmpty)
-                    ? const Icon(Icons.person_outline, size: 40)
+                    ? const Icon(AppIcons.person_outline, size: 40)
                     : null,
               ),
               const SizedBox(height: 16),
@@ -96,17 +97,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 24),
               _ProfileTile(
-                icon: Icons.settings_outlined,
+                icon: AppIcons.settings_outlined,
                 title: 'Paramètres',
                 subtitle: 'Préférences de compte et application',
               ),
               _ProfileTile(
-                icon: Icons.favorite_border,
+                icon: AppIcons.favorite_border,
                 title: 'Favoris',
                 subtitle: 'Retrouver vos lieux sauvegardés',
               ),
               _ProfileTile(
-                icon: Icons.history,
+                icon: AppIcons.history,
                 title: 'Historique',
                 subtitle: 'Dernières visites et recherches',
               ),
@@ -115,7 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 height: 48,
                 child: FilledButton.icon(
                   onPressed: _logout,
-                  icon: const Icon(Icons.logout),
+                  icon: const Icon(AppIcons.logout),
                   label: const Text('Se déconnecter'),
                 ),
               ),
