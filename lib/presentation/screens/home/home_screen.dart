@@ -110,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     final topInset = MediaQuery.of(context).padding.top;
     const topFiltersHeight = 42.0;
+    const gridTopSpacing = 8.0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -150,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: EdgeInsets.only(
-                          top: topInset + topFiltersHeight + 20,
+                          top: topInset + topFiltersHeight + gridTopSpacing,
                           bottom: 0,
                         ),
                         children: [
