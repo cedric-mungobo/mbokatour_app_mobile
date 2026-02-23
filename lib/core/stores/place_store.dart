@@ -26,6 +26,10 @@ class PlaceStore {
   final placeReviews = signal<List<PlaceReviewEntity>>([]);
   final isPlaceReviewsLoading = signal(false);
   final isSubmittingPlaceReview = signal(false);
+  final isPlaceLiked = signal(false);
+  final isPlaceFavorited = signal(false);
+  final isTogglingPlaceLike = signal(false);
+  final isTogglingPlaceFavorite = signal(false);
   final errorMessage = signal<String?>(null);
   final reviewErrorMessage = signal<String?>(null);
   final hasMorePlaces = signal(false);
@@ -302,6 +306,85 @@ class PlaceStore {
     }
   }
 
+  Future<void> loadPlaceInteractionStates(String placeId) async {
+    if (_repository == null) await init();
+    final repository = _repository;
+    if (repository == null) return;
+
+    final normalizedId = placeId.trim();
+    if (normalizedId.isEmpty) return;
+
+    try {
+      final liked = await repository.isPlaceLiked(normalizedId);
+      final favorited = await repository.isPlaceFavorited(normalizedId);
+      isPlaceLiked.value = liked;
+      isPlaceFavorited.value = favorited;
+      isOffline.value = false;
+    } catch (e) {
+      isOffline.value = _isNetworkIssue(e);
+    }
+  }
+
+  Future<bool> togglePlaceLike(String placeId) async {
+    if (_repository == null) await init();
+    final repository = _repository;
+    if (repository == null) return false;
+
+    final normalizedId = placeId.trim();
+    if (normalizedId.isEmpty || isTogglingPlaceLike.value) return false;
+
+    isTogglingPlaceLike.value = true;
+    errorMessage.value = null;
+    try {
+      final previous = isPlaceLiked.value;
+      final current = await repository.togglePlaceLike(normalizedId);
+      isPlaceLiked.value = current;
+      if (previous != current) {
+        _updateSelectedPlaceStats(
+          likesDelta: current ? 1 : -1,
+        );
+      }
+      isOffline.value = false;
+      return true;
+    } catch (e) {
+      errorMessage.value = _buildToggleLikeErrorMessage(e);
+      isOffline.value = _isNetworkIssue(e);
+      return false;
+    } finally {
+      isTogglingPlaceLike.value = false;
+    }
+  }
+
+  Future<bool> togglePlaceFavorite(String placeId) async {
+    if (_repository == null) await init();
+    final repository = _repository;
+    if (repository == null) return false;
+
+    final normalizedId = placeId.trim();
+    if (normalizedId.isEmpty || isTogglingPlaceFavorite.value) return false;
+
+    isTogglingPlaceFavorite.value = true;
+    errorMessage.value = null;
+    try {
+      final previous = isPlaceFavorited.value;
+      final current = await repository.togglePlaceFavorite(normalizedId);
+      isPlaceFavorited.value = current;
+      if (previous != current) {
+        _updateSelectedPlaceStats(
+          favoritesDelta: current ? 1 : -1,
+        );
+      }
+      isOffline.value = false;
+      return true;
+    } catch (e) {
+      errorMessage.value = _buildToggleFavoriteErrorMessage(e);
+      isOffline.value = _isNetworkIssue(e);
+      return false;
+    } finally {
+      isTogglingPlaceFavorite.value = false;
+    }
+  }
+
   Future<bool> submitPlaceReview({
     required String placeId,
     required String comment,
@@ -414,6 +497,26 @@ class PlaceStore {
     return 'Impossible de publier votre avis.';
   }
 
+  String _buildToggleLikeErrorMessage(Object error) {
+    if (error is DioException && error.response?.statusCode == 401) {
+      return 'Connectez-vous pour aimer ce lieu.';
+    }
+    if (_isNetworkIssue(error)) {
+      return 'Connexion impossible pour aimer ce lieu.';
+    }
+    return 'Impossible de mettre à jour le like.';
+  }
+
+  String _buildToggleFavoriteErrorMessage(Object error) {
+    if (error is DioException && error.response?.statusCode == 401) {
+      return 'Connectez-vous pour ajouter ce lieu aux favoris.';
+    }
+    if (_isNetworkIssue(error)) {
+      return 'Connexion impossible pour mettre à jour les favoris.';
+    }
+    return 'Impossible de mettre à jour les favoris.';
+  }
+
   bool _isNetworkIssue(Object error) {
     if (error is DioException) {
       return error.type == DioExceptionType.connectionError ||
@@ -496,6 +599,70 @@ class PlaceStore {
 
   String _placeDetailCacheKey(String placeId) =>
       '${StorageConstants.placeDetailCachePrefix}$placeId';
+
+  void _updateSelectedPlaceStats({
+    int likesDelta = 0,
+    int favoritesDelta = 0,
+  }) {
+    final current = selectedPlace.value;
+    if (current == null) return;
+
+    final updatedStats = PlaceStats(
+      likesCount: _clampToPositive(current.stats.likesCount + likesDelta),
+      visitsCount: current.stats.visitsCount,
+      reviewsCount: current.stats.reviewsCount,
+      favoritesCount: _clampToPositive(
+        current.stats.favoritesCount + favoritesDelta,
+      ),
+    );
+    final updated = _copyPlaceWith(current, stats: updatedStats);
+    selectedPlace.value = updated;
+    _placeByIdCache[current.id] = updated;
+
+    places.value = places.value
+        .map((place) => place.id == updated.id ? updated : place)
+        .toList(growable: false);
+    nearbyPlaces.value = nearbyPlaces.value
+        .map((place) => place.id == updated.id ? updated : place)
+        .toList(growable: false);
+
+    _savePlaceDetailToDiskCache(updated);
+  }
+
+  int _clampToPositive(int value) => value < 0 ? 0 : value;
+
+  PlaceEntity _copyPlaceWith(PlaceEntity place, {PlaceStats? stats}) {
+    return PlaceEntity(
+      id: place.id,
+      name: place.name,
+      slug: place.slug,
+      description: place.description,
+      imageUrl: place.imageUrl,
+      videoUrl: place.videoUrl,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      address: place.address,
+      city: place.city,
+      commune: place.commune,
+      phone: place.phone,
+      whatsapp: place.whatsapp,
+      website: place.website,
+      openingHours: place.openingHours,
+      rating: place.rating,
+      category: place.category,
+      categories: place.categories,
+      isActive: place.isActive,
+      isVerified: place.isVerified,
+      isRecommended: place.isRecommended,
+      prices: place.prices,
+      stats: stats ?? place.stats,
+      distance: place.distance,
+      createdAt: place.createdAt,
+      updatedAt: place.updatedAt,
+      hasVideo: place.hasVideo,
+      media: place.media,
+    );
+  }
 
   Map<String, dynamic> _placeToCacheJson(PlaceEntity place) {
     return <String, dynamic>{

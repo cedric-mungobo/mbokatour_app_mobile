@@ -87,7 +87,7 @@ class WelcomeScreen extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Image.asset(_backgroundImage, fit: BoxFit.cover),
-          Container(color: AppTheme.accentRed.withValues(alpha: 0.52)),
+          Container(color: Colors.black.withValues(alpha: 0.50)),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -109,11 +109,11 @@ class WelcomeScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 24,
+                      fontSize: 28,
                       fontWeight: FontWeight.w500,
                     ),
                   ).animate().fadeIn(delay: 360.ms, duration: 700.ms),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 5),
                   const Text(
                     'Lieux touristiques, hôtels, culture, restaurants et sorties - tout autour de toi dans une seule app. MbokaTour te révèle des endroits uniques à visiter.',
                     textAlign: TextAlign.center,

@@ -314,25 +314,55 @@ class _OpeningHourRow extends StatelessWidget {
 class _StatMiniItem extends StatelessWidget {
   final IconData icon;
   final String value;
+  final bool isActive;
+  final bool isLoading;
+  final VoidCallback? onTap;
 
-  const _StatMiniItem({required this.icon, required this.value});
+  const _StatMiniItem({
+    required this.icon,
+    required this.value,
+    this.isActive = false,
+    this.isLoading = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: Colors.grey.shade700),
-        const SizedBox(width: 6),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: Colors.black87,
+    final activeColor = isActive ? AppTheme.accentRed : Colors.grey.shade700;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: isLoading ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isLoading)
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.8,
+                    color: activeColor,
+                  ),
+                )
+              else
+                Icon(icon, size: 16, color: activeColor),
+              const SizedBox(width: 6),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isActive ? AppTheme.accentRed : Colors.black87,
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

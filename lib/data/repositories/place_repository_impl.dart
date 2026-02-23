@@ -144,6 +144,58 @@ class PlaceRepositoryImpl {
     }
   }
 
+  Future<bool> isPlaceLiked(String placeId) async {
+    try {
+      final response = await _dioService.get(ApiConstants.placeLike(placeId));
+      return _extractInteractionState(
+        _asMap(response.data),
+        keys: const ['liked', 'is_liked', 'like'],
+      );
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Erreur lors de la vérification du like: $e');
+    }
+  }
+
+  Future<bool> togglePlaceLike(String placeId) async {
+    try {
+      await _dioService.post(ApiConstants.placeLike(placeId));
+      return await isPlaceLiked(placeId);
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Erreur lors du like: $e');
+    }
+  }
+
+  Future<bool> isPlaceFavorited(String placeId) async {
+    try {
+      final response = await _dioService.get(
+        ApiConstants.placeFavorite(placeId),
+      );
+      return _extractInteractionState(
+        _asMap(response.data),
+        keys: const ['favorited', 'is_favorite', 'favorite'],
+      );
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Erreur lors de la vérification du favori: $e');
+    }
+  }
+
+  Future<bool> togglePlaceFavorite(String placeId) async {
+    try {
+      await _dioService.post(ApiConstants.placeFavorite(placeId));
+      return await isPlaceFavorited(placeId);
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Erreur lors du favori: $e');
+    }
+  }
+
   Future<List<PlaceEntity>> getNearbyPlaces({
     required double latitude,
     required double longitude,
@@ -245,6 +297,46 @@ class PlaceRepositoryImpl {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '');
+  }
+
+  bool _extractInteractionState(
+    Map<String, dynamic> payload, {
+    required List<String> keys,
+  }) {
+    final sources = <dynamic>[payload, payload['data']];
+    for (final source in sources) {
+      if (source is! Map) continue;
+      final map = Map<String, dynamic>.from(source);
+      for (final key in keys) {
+        final value = map[key];
+        final parsed = _asBool(value);
+        if (parsed != null) return parsed;
+      }
+    }
+
+    final message = payload['message']?.toString().toLowerCase() ?? '';
+    if (message.contains('removed') ||
+        message.contains('delete') ||
+        message.contains('unlike') ||
+        message.contains('dislike')) {
+      return false;
+    }
+    if (message.contains('added') ||
+        message.contains('liked') ||
+        message.contains('favorite')) {
+      return true;
+    }
+    return false;
+  }
+
+  bool? _asBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value?.toString().trim().toLowerCase();
+    if (text == null || text.isEmpty) return null;
+    if (text == 'true' || text == '1' || text == 'yes') return true;
+    if (text == 'false' || text == '0' || text == 'no') return false;
+    return null;
   }
 
   Map<String, dynamic> _extractPlace(dynamic payload) {

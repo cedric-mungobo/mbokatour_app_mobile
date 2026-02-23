@@ -55,9 +55,26 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
   Future<void> _loadPlaceDetails({bool forceRefresh = false}) async {
     await _store.loadPlaceById(widget.placeId, forceRefresh: forceRefresh);
     await _store.loadPlaceReviews(widget.placeId);
+    await _store.loadPlaceInteractionStates(widget.placeId);
     if (mounted && _store.errorMessage.value != null) {
       NotificationService.error(context, _store.errorMessage.value!);
     }
+  }
+
+  Future<void> _toggleLike() async {
+    final ok = await _store.togglePlaceLike(widget.placeId);
+    if (!mounted || ok) return;
+    final message = _store.errorMessage.value ?? 'Impossible de liker ce lieu.';
+    NotificationService.warning(context, message);
+  }
+
+  Future<void> _toggleFavorite() async {
+    final ok = await _store.togglePlaceFavorite(widget.placeId);
+    if (!mounted || ok) return;
+    final message =
+        _store.errorMessage.value ??
+        'Impossible de mettre à jour les favoris.';
+    NotificationService.warning(context, message);
   }
 
   Future<void> _submitReview() async {
@@ -168,6 +185,10 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       final reviews = _store.placeReviews.value;
       final isReviewsLoading = _store.isPlaceReviewsLoading.value;
       final isSubmittingReview = _store.isSubmittingPlaceReview.value;
+      final isLiked = _store.isPlaceLiked.value;
+      final isFavorited = _store.isPlaceFavorited.value;
+      final isTogglingLike = _store.isTogglingPlaceLike.value;
+      final isTogglingFavorite = _store.isTogglingPlaceFavorite.value;
       final visibleReviews = _showAllReviews ? reviews : reviews.take(5).toList();
 
       if (isLoading) {
@@ -250,6 +271,9 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   _StatMiniItem(
                     icon: AppIcons.favorite_outline,
                     value: place.stats.likesCount.toString(),
+                    isActive: isLiked,
+                    isLoading: isTogglingLike,
+                    onTap: _toggleLike,
                   ),
                   _StatMiniItem(
                     icon: AppIcons.visibility_outlined,
@@ -262,6 +286,9 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   _StatMiniItem(
                     icon: AppIcons.bookmark_border_outlined,
                     value: place.stats.favoritesCount.toString(),
+                    isActive: isFavorited,
+                    isLoading: isTogglingFavorite,
+                    onTap: _toggleFavorite,
                   ),
                 ],
               ),
