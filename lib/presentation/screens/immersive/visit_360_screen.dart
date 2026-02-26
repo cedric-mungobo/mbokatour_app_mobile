@@ -136,7 +136,7 @@ class _Visit360ScreenState extends State<Visit360Screen> {
   Future<void> _sendTourToViewerIfPossible() async {
     final tour = widget.tour;
     if (_tourInitSent || !_viewerReady || tour == null || !tour.isUsable) return;
-    final payload = jsonEncode(_buildTourPayloadWithOfflineFallback(tour));
+    final payload = jsonEncode(tour.toJson());
     try {
       await _webViewController.runJavaScript('window.initTour($payload);');
       _tourInitSent = true;
@@ -161,33 +161,6 @@ class _Visit360ScreenState extends State<Visit360Screen> {
     }
   }
 
-  Map<String, dynamic> _buildTourPayloadWithOfflineFallback(
-    PlaceImmersiveTour tour,
-  ) {
-    final json = tour.toJson();
-    final rawScenes = json['scenes'];
-    if (rawScenes is! List) return json;
-
-    final scenes = rawScenes.map((item) {
-      if (item is! Map) return item;
-      final scene = Map<String, dynamic>.from(item);
-      final remoteUrl = scene['panorama_url']?.toString();
-      final localPath = remoteUrl == null
-          ? null
-          : _offlinePanoramaPathsByRemoteUrl[remoteUrl];
-      if (localPath != null && localPath.isNotEmpty) {
-        scene['panorama_url'] = Uri.file(localPath).toString();
-        scene['panorama_cached_offline'] = true;
-      } else {
-        scene['panorama_cached_offline'] = false;
-      }
-      return scene;
-    }).toList();
-
-    json['scenes'] = scenes;
-    return json;
-  }
-
   Future<void> _prepareOfflinePanoramaCache() async {
     final tour = widget.tour;
     if (_cachePrefetchStarted || tour == null || !tour.isUsable) return;
@@ -204,10 +177,6 @@ class _Visit360ScreenState extends State<Visit360Screen> {
       if (file != null && await file.exists()) {
         _offlinePanoramaPathsByRemoteUrl[url] = file.path;
       }
-    }
-
-    if (_viewerReady && !_tourInitSent) {
-      await _sendTourToViewerIfPossible();
     }
 
     for (final url in uniqueUrls) {
@@ -359,54 +328,59 @@ class _Visit360ScreenState extends State<Visit360Screen> {
               alignment: Alignment.topLeft,
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _OverlayCircleButton(
-                      icon: AppIcons.arrow_back,
-                      onTap: () {
-                        if (context.canPop()) {
-                          context.pop();
-                        } else {
-                          context.go('/place/${widget.placeId}');
-                        }
-                      },
-                    ),
-                    if (hasTour) ...[
-                      const SizedBox(width: 8),
-                      _OverlayPillButton(
-                        label: 'Scène principale',
-                        onTap: _goToMainScene,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _OverlayCircleButton(
+                        icon: AppIcons.arrow_back,
+                        onTap: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.go('/place/${widget.placeId}');
+                          }
+                        },
                       ),
-                    ],
-                    if (_viewerMessage != null) ...[
-                      const SizedBox(width: 10),
-                      Container(
-                        constraints: const BoxConstraints(maxWidth: 260),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                      if (hasTour) ...[
+                        const SizedBox(width: 8),
+                        _OverlayPillButton(
+                          label: 'Scène principale',
+                          onTap: _goToMainScene,
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: const Color(0xFFFFB4AB).withValues(alpha: 0.4),
+                      ],
+                      if (_viewerMessage != null) ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          constraints: const BoxConstraints(maxWidth: 260),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: const Color(0xFFFFB4AB).withValues(
+                                alpha: 0.4,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            _viewerMessage!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFFFFD0CB),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          _viewerMessage!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xFFFFD0CB),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
