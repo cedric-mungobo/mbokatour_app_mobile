@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../domain/entities/place_entity.dart';
 import '../../presentation/screens/welcome/welcome_screen.dart';
 import '../../presentation/screens/login/login_screen.dart';
 import '../../presentation/screens/otp/otp_screen.dart';
 import '../../presentation/screens/register/register_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
+import '../../presentation/screens/immersive/visit_360_screen.dart';
 import '../../presentation/screens/nearby/nearby_places_screen.dart';
 import '../../presentation/screens/place_details/place_details_screen.dart';
 import '../../presentation/screens/sections/section_details_screen.dart';
@@ -87,6 +89,22 @@ class AppRouter {
           builder: (context, state) {
             final placeId = state.pathParameters['id']!;
             return PlaceDetailsScreen(placeId: placeId);
+          },
+        ),
+        _animatedRoute(
+          path: '/place/:id/visit-360',
+          builder: (context, state) {
+            final placeId = state.pathParameters['id']!;
+            final extra = state.extra is Map ? state.extra as Map : const {};
+            return Visit360Screen(
+              placeId: placeId,
+              placeName: (extra['placeName'] as String?) ?? 'Lieu',
+              placeAddress: extra['placeAddress'] as String?,
+              coverImageUrl: extra['coverImageUrl'] as String?,
+              tour: extra['tour'] is PlaceImmersiveTour
+                  ? extra['tour'] as PlaceImmersiveTour
+                  : null,
+            );
           },
         ),
         _animatedRoute(

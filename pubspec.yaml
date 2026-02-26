@@ -56,6 +56,7 @@ dependencies:
   geolocator: ^14.0.2
   flutter_map: ^6.1.0
   latlong2: ^0.9.1
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +84,8 @@ flutter:
     - .env
     - assets/images/logo.png
     - assets/images/
+    - assets/360/
+    - assets/360/pannellum/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

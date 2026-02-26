@@ -34,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _store = PlaceStore.instance;
   List<CategoryEntity> _categories = const [];
   String? _selectedCategorySlug;
+  bool _isBootstrapping = true;
 
   @override
   void initState() {
@@ -49,11 +50,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _initializeDependencies() async {
-    await _store.init();
-    await _loadCategories();
-    await _loadPlaces();
-    if (mounted && _store.errorMessage.value != null) {
-      NotificationService.error(context, _store.errorMessage.value!);
+    try {
+      await _store.init();
+      await _loadCategories();
+      await _loadPlaces();
+      if (mounted && _store.errorMessage.value != null) {
+        NotificationService.error(context, _store.errorMessage.value!);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBootstrapping = false;
+        });
+      }
     }
   }
 
@@ -126,6 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
           final places = _store.places.value;
           final isMuted = MediaSettingsService.isMuted.value;
           final isOffline = _store.isOffline.value;
+          final showInitialLoader = _isBootstrapping || isLoading;
 
           return MediaQuery.removePadding(
             context: context,
@@ -155,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           bottom: 0,
                         ),
                         children: [
-                          if (isLoading)
+                          if (showInitialLoader)
                             const SizedBox(
                               height: 380,
                               child: Center(child: CircularProgressIndicator()),
@@ -207,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               padding: EdgeInsets.symmetric(vertical: 16),
                               child: Center(child: CircularProgressIndicator()),
                             ),
-                          if (!isLoading &&
+                          if (!showInitialLoader &&
                               !isLoadingMore &&
                               places.isNotEmpty &&
                               !_store.hasMorePlaces.value)

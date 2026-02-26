@@ -72,8 +72,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     final ok = await _store.togglePlaceFavorite(widget.placeId);
     if (!mounted || ok) return;
     final message =
-        _store.errorMessage.value ??
-        'Impossible de mettre à jour les favoris.';
+        _store.errorMessage.value ?? 'Impossible de mettre à jour les favoris.';
     NotificationService.warning(context, message);
   }
 
@@ -189,7 +188,9 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       final isFavorited = _store.isPlaceFavorited.value;
       final isTogglingLike = _store.isTogglingPlaceLike.value;
       final isTogglingFavorite = _store.isTogglingPlaceFavorite.value;
-      final visibleReviews = _showAllReviews ? reviews : reviews.take(5).toList();
+      final visibleReviews = _showAllReviews
+          ? reviews
+          : reviews.take(5).toList();
 
       if (isLoading) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -251,6 +252,25 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
             },
           ),
         ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: place.hasImmersiveTour
+            ? _Visit360Fab(
+                onTap: () {
+                  final coverImageUrl =
+                      place.imageUrl ??
+                      (place.media.isNotEmpty ? place.media.first.url : null);
+                  context.push(
+                    '/place/${place.id}/visit-360',
+                    extra: {
+                      'placeName': place.name,
+                      'placeAddress': place.address,
+                      'coverImageUrl': coverImageUrl,
+                      'tour': place.immersiveTour,
+                    },
+                  );
+                },
+              )
+            : null,
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(10.0),
           child: Column(
@@ -461,7 +481,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               ),
 
               const SizedBox(height: 18),
-             
+
               if (hasContactsSection) ...[
                 const SizedBox(height: 18),
                 const _SectionTitle('Contacts'),
@@ -567,7 +587,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   ),
                 ),
               ],
-               const _SectionTitle('Avis'),
+              const _SectionTitle('Avis'),
               _SectionCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,7 +667,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 ),
               ),
 
-
               const SizedBox(height: 32),
 
               // Bouton d'action
@@ -672,5 +691,67 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         ),
       );
     });
+  }
+}
+
+class _Visit360Fab extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _Visit360Fab({required this.onTap});
+
+  @override
+  State<_Visit360Fab> createState() => _Visit360FabState();
+}
+
+class _Visit360FabState extends State<_Visit360Fab>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final t = Curves.easeInOut.transform(_controller.value);
+        return Transform.scale(
+          scale: 1 + (t * 0.035),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withValues(alpha: 0.16 + (t * 0.18)),
+                  blurRadius: 18 + (t * 8),
+                  spreadRadius: 1 + (t * 2),
+                ),
+              ],
+            ),
+            child: child,
+          ),
+        );
+      },
+      child: FloatingActionButton.extended(
+        onPressed: widget.onTap,
+        backgroundColor: AppTheme.accentRed,
+        foregroundColor: Colors.white,
+        icon: const Icon(AppIcons.g_mobiledata),
+        label: const Text('Visiter en 360'),
+      ),
+    );
   }
 }

@@ -1,5 +1,109 @@
 import 'package:equatable/equatable.dart';
 
+class PlaceImmersiveHotspot extends Equatable {
+  final String id;
+  final double? yaw;
+  final double? pitch;
+  final String? label;
+  final String actionType;
+  final String? targetSceneId;
+  final Map<String, dynamic>? payload;
+
+  const PlaceImmersiveHotspot({
+    required this.id,
+    this.yaw,
+    this.pitch,
+    this.label,
+    required this.actionType,
+    this.targetSceneId,
+    this.payload,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'yaw': yaw,
+    'pitch': pitch,
+    'label': label,
+    'action_type': actionType,
+    'target_scene_id': targetSceneId,
+    'payload': payload,
+  };
+
+  @override
+  List<Object?> get props => [
+    id,
+    yaw,
+    pitch,
+    label,
+    actionType,
+    targetSceneId,
+    payload,
+  ];
+}
+
+class PlaceImmersiveScene extends Equatable {
+  final String id;
+  final String name;
+  final String panoramaUrl;
+  final String? instructionText;
+  final String? highlightHotspotId;
+  final List<PlaceImmersiveHotspot> hotspots;
+
+  const PlaceImmersiveScene({
+    required this.id,
+    required this.name,
+    required this.panoramaUrl,
+    this.instructionText,
+    this.highlightHotspotId,
+    this.hotspots = const [],
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'panorama_url': panoramaUrl,
+    'instruction_text': instructionText,
+    'highlight_hotspot_id': highlightHotspotId,
+    'hotspots': hotspots.map((h) => h.toJson()).toList(),
+  };
+
+  @override
+  List<Object?> get props => [
+    id,
+    name,
+    panoramaUrl,
+    instructionText,
+    highlightHotspotId,
+    hotspots,
+  ];
+}
+
+class PlaceImmersiveTour extends Equatable {
+  final String id;
+  final String title;
+  final String? startSceneId;
+  final List<PlaceImmersiveScene> scenes;
+
+  const PlaceImmersiveTour({
+    required this.id,
+    required this.title,
+    this.startSceneId,
+    this.scenes = const [],
+  });
+
+  bool get isUsable => scenes.isNotEmpty;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'start_scene_id': startSceneId,
+    'scenes': scenes.map((s) => s.toJson()).toList(),
+  };
+
+  @override
+  List<Object?> get props => [id, title, startSceneId, scenes];
+}
+
 class PlacePrice extends Equatable {
   final String id;
   final String label;
@@ -101,6 +205,7 @@ class PlaceEntity extends Equatable {
   final DateTime? updatedAt;
   final bool hasVideo;
   final List<PlaceMedia> media;
+  final PlaceImmersiveTour? immersiveTour;
 
   const PlaceEntity({
     required this.id,
@@ -131,7 +236,10 @@ class PlaceEntity extends Equatable {
     this.updatedAt,
     this.hasVideo = false,
     this.media = const [],
+    this.immersiveTour,
   });
+
+  bool get hasImmersiveTour => immersiveTour?.isUsable == true;
 
   @override
   List<Object?> get props => [
@@ -163,5 +271,6 @@ class PlaceEntity extends Equatable {
     updatedAt,
     hasVideo,
     media,
+    immersiveTour,
   ];
 }

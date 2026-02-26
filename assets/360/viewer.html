@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>MbokaTour 360 expérience</title>
+    <!-- __PANNELLUM_CSS__ -->
+    <style>
+      :root {
+        --bg: #0d1117;
+        --panel: rgba(13, 17, 23, 0.78);
+        --panel-border: rgba(255, 255, 255, 0.12);
+        --text: #f8fafc;
+        --muted: rgba(248, 250, 252, 0.72);
+        --accent: #fab40f;
+        --danger: #f87171;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+      }
+      body {
+        overflow: hidden;
+      }
+      #viewer {
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(circle at 20% 12%, #1f2937 0%, #0f172a 40%, #020617 100%);
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      .panel {
+        width: min(100%, 520px);
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 14px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--accent);
+      }
+      .help {
+        position: absolute;
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        display: flex;
+        justify-content: flex-start;
+      }
+      .help .panel {
+        width: min(100%, 420px);
+        pointer-events: none;
+      }
+      .help-content {
+        padding: 10px 12px;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.35;
+      }
+      .place-name {
+        color: var(--text);
+        font-weight: 700;
+        font-size: 13px;
+        line-height: 1.2;
+      }
+      .place-address {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.25;
+      }
+      .missing {
+        position: fixed;
+        inset: 0;
+        display: none;
+        place-items: center;
+        background: rgba(2, 6, 23, 0.86);
+        padding: 20px;
+      }
+      .missing.show {
+        display: grid;
+      }
+      .missing-card {
+        width: min(100%, 560px);
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        padding: 16px;
+      }
+      .missing-card h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+      .missing-card p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        line-height: 1.4;
+        font-size: 13px;
+      }
+      .missing-card code {
+        display: block;
+        margin-top: 10px;
+        white-space: pre-wrap;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 10px;
+        color: #fde68a;
+        font-size: 12px;
+      }
+      /* Custom hotspot badge */
+      .mboka-hotspot {
+        transform: translate(-50%, -50%);
+      }
+      .mboka-hotspot button {
+        pointer-events: auto;
+        border: 0;
+        border-radius: 10px;
+        padding: 6px 8px;
+        background: rgba(13, 17, 23, 0.82);
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        font-size: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-block;
+        white-space: nowrap;
+        line-height: 1.1;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+      }
+      .mboka-hotspot button::before {
+        content: none;
+      }
+      .mboka-hotspot.info button::before {
+        content: none;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewer" aria-label="Panorama 360"></div>
+
+    <div class="overlay">
+      <div id="tourTitle" class="sr-only">Visite 360</div>
+      <div id="sceneLabel" class="sr-only">En attente du tour...</div>
+      <div id="statusBar" class="sr-only">Initialisation du viewer...</div>
+      <div class="help">
+        <div class="panel">
+          <div class="help-content">
+            <div class="place-name" id="placeName">Lieu</div>
+            <div class="place-address" id="placeAddress">Adresse indisponible</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="missing" id="missingPannellum">
+      <div class="missing-card">
+        <h2>Pannellum non trouvé</h2>
+        <p>
+          Copiez les fichiers Pannellum en local dans <code>assets/360/pannellum/</code>
+          puis relancez l'écran.
+        </p>
+        <code>assets/360/pannellum/pannellum.js
+assets/360/pannellum/pannellum.css
+assets/360/pannellum/libpannellum.js</code>
+      </div>
+    </div>
+
+    <!-- __PANNELLUM_JS__ -->
+    <script>
+      (function () {
+        let viewer = null;
+        let currentTour = null;
+        let currentSceneId = null;
+        let sceneLookup = {};
+
+        const statusBar = document.getElementById("statusBar");
+        const sceneLabel = document.getElementById("sceneLabel");
+        const tourTitle = document.getElementById("tourTitle");
+        const missingPannellum = document.getElementById("missingPannellum");
+        const placeNameEl = document.getElementById("placeName");
+        const placeAddressEl = document.getElementById("placeAddress");
+
+        function postMessage(payload) {
+          if (!window.FlutterBridge || typeof window.FlutterBridge.postMessage !== "function") {
+            return;
+          }
+          try {
+            window.FlutterBridge.postMessage(JSON.stringify(payload));
+          } catch (_) {}
+        }
+
+        function setStatus(message, isError) {
+          statusBar.textContent = message || "";
+          statusBar.classList.toggle("error", !!isError);
+        }
+
+        function setPlaceMeta(meta) {
+          const name =
+            meta && meta.name && String(meta.name).trim()
+              ? String(meta.name).trim()
+              : "Lieu";
+          const address =
+            meta && meta.address && String(meta.address).trim()
+              ? String(meta.address).trim()
+              : "Adresse indisponible";
+
+          if (placeNameEl) {
+            placeNameEl.textContent = name;
+          }
+          if (placeAddressEl) {
+            placeAddressEl.textContent = address;
+          }
+        }
+
+        function escapeHtml(value) {
+          return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+        }
+
+        function buildInfoTooltip(hotSpotDiv, args) {
+          const label = args?.label || "Info";
+          const wrapper = document.createElement("div");
+          wrapper.className = "mboka-hotspot info";
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          button.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            postMessage({
+              type: "hotspot_clicked",
+              hotspot: args || {},
+              scene_id: currentSceneId,
+            });
+            const payload = args && args.payload && typeof args.payload === "object" ? args.payload : null;
+            const message =
+              (payload && (payload.message || payload.text || payload.title)) ||
+              label;
+            setStatus(message, false);
+          });
+          wrapper.appendChild(button);
+          hotSpotDiv.innerHTML = "";
+          hotSpotDiv.appendChild(wrapper);
+        }
+
+        function buildSceneTooltip(hotSpotDiv, args) {
+          const label = args?.label || "Aller";
+          const wrapper = document.createElement("div");
+          wrapper.className = "mboka-hotspot scene";
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          button.addEventListener("click", (event) => onSceneHotspotClick(event, args));
+          wrapper.appendChild(button);
+          hotSpotDiv.innerHTML = "";
+          hotSpotDiv.appendChild(wrapper);
+        }
+
+        function onSceneHotspotClick(event, args) {
+          event.preventDefault();
+          event.stopPropagation();
+          postMessage({
+            type: "hotspot_clicked",
+            hotspot: args || {},
+            scene_id: currentSceneId,
+          });
+
+          if (!viewer) return;
+          const targetSceneId = args && args.target_scene_id ? String(args.target_scene_id) : null;
+          if (!targetSceneId) {
+            setStatus("Hotspot de navigation invalide (scene cible manquante).", true);
+            return;
+          }
+          viewer.loadScene(targetSceneId);
+        }
+
+        function toPannellumHotspot(h) {
+          const action = String(h.action_type || "info").toLowerCase();
+          const baseArgs = {
+            id: h.id != null ? String(h.id) : null,
+            label: h.label || null,
+            action_type: action,
+            target_scene_id: h.target_scene_id != null ? String(h.target_scene_id) : null,
+            payload:
+              h.payload && typeof h.payload === "object" ? h.payload : null,
+            yaw: typeof h.yaw === "number" ? h.yaw : null,
+            pitch: typeof h.pitch === "number" ? h.pitch : null,
+          };
+
+          if (action === "go_to_scene" && baseArgs.target_scene_id) {
+            return {
+              pitch: typeof h.pitch === "number" ? h.pitch : 0,
+              yaw: typeof h.yaw === "number" ? h.yaw : 0,
+              type: "scene",
+              text: h.label || "Aller",
+              sceneId: baseArgs.target_scene_id,
+              createTooltipFunc: buildSceneTooltip,
+              createTooltipArgs: baseArgs,
+              clickHandlerFunc: onSceneHotspotClick,
+              clickHandlerArgs: baseArgs,
+            };
+          }
+
+          return {
+            pitch: typeof h.pitch === "number" ? h.pitch : 0,
+            yaw: typeof h.yaw === "number" ? h.yaw : 0,
+            type: "info",
+            text: h.label || "Info",
+            createTooltipFunc: buildInfoTooltip,
+            createTooltipArgs: baseArgs,
+          };
+        }
+
+        function buildConfig(tour) {
+          const scenes = {};
+          sceneLookup = {};
+
+          (tour.scenes || []).forEach((scene, index) => {
+            if (!scene || scene.id == null || !scene.panorama_url) return;
+            const sceneId = String(scene.id);
+            sceneLookup[sceneId] = scene;
+
+            scenes[sceneId] = {
+              title: scene.name || `Scène ${index + 1}`,
+              type: "equirectangular",
+              panorama: scene.panorama_url,
+              autoLoad: true,
+              showControls: true,
+              hotSpots: Array.isArray(scene.hotspots)
+                ? scene.hotspots.map(toPannellumHotspot)
+                : [],
+            };
+          });
+
+          const sceneIds = Object.keys(scenes);
+          const firstScene =
+            (tour.start_scene_id && scenes[String(tour.start_scene_id)]
+              ? String(tour.start_scene_id)
+              : sceneIds[0]) || null;
+
+          if (!firstScene) {
+            throw new Error("Aucune scène valide dans le tour");
+          }
+
+          return {
+            default: {
+              firstScene: firstScene,
+              autoLoad: true,
+              sceneFadeDuration: 800,
+              showControls: true,
+              showZoomCtrl: true,
+              mouseZoom: true,
+              touchPanSpeedCoeffFactor: 1,
+              crossOrigin: "anonymous",
+            },
+            scenes: scenes,
+          };
+        }
+
+        function bindViewerEvents() {
+          if (!viewer || typeof viewer.on !== "function") return;
+
+          viewer.on("scenechange", function (sceneId) {
+            currentSceneId = sceneId != null ? String(sceneId) : null;
+            const scene = currentSceneId ? sceneLookup[currentSceneId] : null;
+            const sceneName = scene && scene.name ? scene.name : currentSceneId || "Scène";
+            sceneLabel.textContent = sceneName;
+            setStatus(`Scène active: ${sceneName}`, false);
+            postMessage({
+              type: "scene_changed",
+              scene_id: currentSceneId,
+              scene_name: sceneName,
+            });
+          });
+
+          viewer.on("load", function () {
+            setStatus("Panorama chargé.", false);
+          });
+
+          viewer.on("error", function (message) {
+            const text = message ? String(message) : "Erreur Pannellum";
+            setStatus(text, true);
+            postMessage({ type: "error", message: text });
+          });
+        }
+
+        function ensurePannellumAvailable() {
+          if (window.__mbokaPannellumScriptError) {
+            missingPannellum.classList.add("show");
+            setStatus(window.__mbokaPannellumScriptError, true);
+            postMessage({
+              type: "error",
+              message: window.__mbokaPannellumScriptError,
+            });
+            return false;
+          }
+          if (!window.pannellum || typeof window.pannellum.viewer !== "function") {
+            missingPannellum.classList.add("show");
+            setStatus(
+              "Pannellum introuvable dans assets/360/pannellum (script non exposé).",
+              true
+            );
+            postMessage({
+              type: "error",
+              message:
+                "Pannellum introuvable (assets locaux/path base WebView à vérifier).",
+            });
+            return false;
+          }
+          missingPannellum.classList.remove("show");
+          return true;
+        }
+
+        function initTour(nextTour) {
+          try {
+            currentTour = nextTour;
+            tourTitle.textContent = nextTour && nextTour.title ? nextTour.title : "Visite 360";
+            sceneLabel.textContent = "Préparation des scènes...";
+
+            if (!ensurePannellumAvailable()) return;
+            const config = buildConfig(nextTour);
+
+            if (viewer && typeof viewer.destroy === "function") {
+              try {
+                viewer.destroy();
+              } catch (_) {}
+            }
+
+            document.getElementById("viewer").innerHTML = "";
+            viewer = window.pannellum.viewer("viewer", config);
+            bindViewerEvents();
+
+            currentSceneId = config.default.firstScene;
+            const firstScene = sceneLookup[currentSceneId];
+            sceneLabel.textContent =
+              (firstScene && firstScene.name) || currentSceneId || "Scène";
+            setStatus("Viewer initialisé.", false);
+
+            postMessage({
+              type: "tour_initialized",
+              tour_id: nextTour && nextTour.id ? String(nextTour.id) : null,
+              scenes_count: Object.keys(config.scenes).length,
+              current_scene_id: currentSceneId,
+            });
+          } catch (e) {
+            const message = e && e.message ? e.message : String(e);
+            setStatus(message, true);
+            postMessage({ type: "error", message });
+          }
+        }
+
+        function goToScene(sceneId) {
+          if (!viewer || !sceneId) return;
+          try {
+            viewer.loadScene(String(sceneId));
+          } catch (e) {
+            postMessage({
+              type: "error",
+              message: e && e.message ? e.message : String(e),
+            });
+          }
+        }
+
+        window.initTour = initTour;
+        window.goToScene = goToScene;
+        window.setPlaceMeta = setPlaceMeta;
+
+        window.addEventListener("resize", function () {
+          if (viewer && typeof viewer.resize === "function") {
+            viewer.resize();
+          }
+        });
+
+        if (!ensurePannellumAvailable()) {
+          // Keep page usable while waiting for local assets.
+        }
+        postMessage({
+          type: "viewer_ready",
+          pannellum_script_loaded: !!window.__mbokaPannellumScriptLoaded,
+        });
+      })();
+    </script>
+  </body>
+</html>

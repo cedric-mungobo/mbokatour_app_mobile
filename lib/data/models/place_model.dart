@@ -30,6 +30,7 @@ class PlaceModel extends PlaceEntity {
     super.updatedAt,
     super.hasVideo = false,
     super.media = const [],
+    super.immersiveTour,
   });
 
   factory PlaceModel.fromJson(Map<String, dynamic> json) {
@@ -94,6 +95,72 @@ class PlaceModel extends PlaceEntity {
       createdAt: _asDateTime(json['created_at']),
       updatedAt: _asDateTime(json['updated_at']),
       media: media,
+      immersiveTour: _extractImmersiveTour(
+        json['immersive_tour'] ?? json['immersiveTour'],
+      ),
+    );
+  }
+
+  static PlaceImmersiveTour? _extractImmersiveTour(dynamic rawTour) {
+    if (rawTour is! Map) return null;
+    final map = Map<String, dynamic>.from(rawTour);
+    final rawScenes = map['scenes'];
+    if (rawScenes is! List) return null;
+
+    final scenes = <PlaceImmersiveScene>[];
+    for (final item in rawScenes) {
+      if (item is! Map) continue;
+      final sceneMap = Map<String, dynamic>.from(item);
+      final panoramaUrl = _asString(sceneMap['panorama_url']);
+      if (panoramaUrl == null) continue;
+
+      final rawHotspots = sceneMap['hotspots'];
+      final hotspots = <PlaceImmersiveHotspot>[];
+      if (rawHotspots is List) {
+        for (final h in rawHotspots) {
+          if (h is! Map) continue;
+          final hotspotMap = Map<String, dynamic>.from(h);
+          hotspots.add(
+            PlaceImmersiveHotspot(
+              id:
+                  hotspotMap['id']?.toString() ??
+                  'hotspot_${hotspots.length}_${sceneMap['id'] ?? 'scene'}',
+              yaw: _asDouble(hotspotMap['yaw']),
+              pitch: _asDouble(hotspotMap['pitch']),
+              label: _asString(hotspotMap['label']),
+              actionType:
+                  _asString(hotspotMap['action_type'])?.toLowerCase() ?? 'info',
+              targetSceneId: hotspotMap['target_scene_id']?.toString(),
+              payload: hotspotMap['payload'] is Map
+                  ? Map<String, dynamic>.from(hotspotMap['payload'])
+                  : null,
+            ),
+          );
+        }
+      }
+
+      final sceneId = sceneMap['id']?.toString();
+      if (sceneId == null || sceneId.isEmpty) continue;
+
+      scenes.add(
+        PlaceImmersiveScene(
+          id: sceneId,
+          name: _asString(sceneMap['name']) ?? 'Scène ${scenes.length + 1}',
+          panoramaUrl: panoramaUrl,
+          instructionText: _asString(sceneMap['instruction_text']),
+          highlightHotspotId: sceneMap['highlight_hotspot_id']?.toString(),
+          hotspots: hotspots,
+        ),
+      );
+    }
+
+    if (scenes.isEmpty) return null;
+
+    return PlaceImmersiveTour(
+      id: map['id']?.toString() ?? 'tour',
+      title: _asString(map['title']) ?? 'Visite 360',
+      startSceneId: map['start_scene_id']?.toString(),
+      scenes: scenes,
     );
   }
 

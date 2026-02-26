@@ -102,8 +102,9 @@ class PlaceRepositoryImpl {
       final reviews = rawList
           .whereType<Map>()
           .map(
-            (item) =>
-                PlaceReviewModel.fromJson(Map<String, dynamic>.from(item)),
+            (item) => PlaceReviewModel.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
           )
           .toList();
 
