@@ -23,6 +23,7 @@ class PaginatedPlacesResult {
 
 class PlaceRepositoryImpl {
   final DioService _dioService;
+  static const int _placesPerPage = 50;
 
   PlaceRepositoryImpl({required DioService dioService})
     : _dioService = dioService;
@@ -45,9 +46,11 @@ class PlaceRepositoryImpl {
         isSearch ? ApiConstants.placeSearch : ApiConstants.places,
         queryParameters: {
           'page': page,
+          'per_page': _placesPerPage,
           if (isSearch) 'q': normalizedQuery,
-          if (normalizedCategory != null && normalizedCategory.isNotEmpty)
-            'category': normalizedCategory,
+          ...?(normalizedCategory?.isNotEmpty == true
+              ? {'category': normalizedCategory}
+              : null),
         },
       );
       final payload = _asMap(response.data);
@@ -202,12 +205,19 @@ class PlaceRepositoryImpl {
     required double longitude,
     double radiusKm = 10,
     int page = 1,
+    String? categorySlug,
+    int? categoryId,
   }) async {
+    final normalizedCategory = categorySlug?.trim();
     final query = <String, dynamic>{
       'lat': latitude,
       'lng': longitude,
       'radius': radiusKm,
       'page': page,
+      ...?(normalizedCategory?.isNotEmpty == true
+          ? {'category': normalizedCategory}
+          : null),
+      ...?(categoryId != null ? {'category_id': categoryId} : null),
     };
 
     try {

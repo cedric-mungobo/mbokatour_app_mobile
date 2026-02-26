@@ -19,6 +19,7 @@ import '../../../domain/entities/category_entity.dart';
 import '../../../data/repositories/category_repository_impl.dart';
 import '../../widgets/app_logo_widget.dart';
 import '../../widgets/bored_bottom_sheet.dart';
+import '../../widgets/category_filter_chips_bar.dart';
 import '../../widgets/place_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -233,37 +234,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   top: topInset + 6,
                   child: SizedBox(
                     height: topFiltersHeight,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _HomeFilterChip(
-                            label: 'Decouverte',
-                            isActive: _selectedCategorySlug == null,
-                            onTap: () {
-                              if (_selectedCategorySlug == null) return;
-                              setState(() => _selectedCategorySlug = null);
-                              _loadPlaces(forceRefresh: true);
-                            },
-                          ),
-                          for (final category in _categories) ...[
-                            const SizedBox(width: 8),
-                            _HomeFilterChip(
-                              label: category.name,
-                              isActive: _selectedCategorySlug == category.slug,
-                              onTap: () {
-                                setState(() {
-                                  _selectedCategorySlug =
-                                      _selectedCategorySlug == category.slug
-                                      ? null
-                                      : category.slug;
-                                });
-                                _loadPlaces(forceRefresh: true);
-                              },
-                            ),
-                          ],
-                        ],
-                      ),
+                    child: CategoryFilterChipsBar(
+                      categories: _categories,
+                      selectedSlug: _selectedCategorySlug,
+                      darkMode: true,
+                      allLabel: 'Decouverte',
+                      onSelected: (category) {
+                        final nextSlug = category?.slug;
+                        if (_selectedCategorySlug == nextSlug) return;
+                        setState(() => _selectedCategorySlug = nextSlug);
+                        _loadPlaces(forceRefresh: true);
+                      },
                     ),
                   ).animate().fadeIn(delay: 140.ms, duration: 280.ms).slideY(
                     begin: -0.04,
@@ -318,44 +299,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final height = double.tryParse(match.group(2)!);
     if (width == null || height == null || height == 0) return null;
     return width / height;
-  }
-}
-
-class _HomeFilterChip extends StatelessWidget {
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _HomeFilterChip({
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: isActive ? Colors.white : Colors.white24,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.black87 : Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
   }
 }
 

@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import '../../../core/services/cache_service.dart';
+import '../../../core/services/dio_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/user_location_service.dart';
 import '../../../core/stores/place_store.dart';
+import '../../../data/repositories/category_repository_impl.dart';
+import '../../../domain/entities/category_entity.dart';
 import '../../../domain/entities/place_entity.dart';
+import '../../widgets/category_filter_chips_bar.dart';
 import '../../widgets/mini_place_card.dart';
 
 class NearbyPlacesScreen extends StatefulWidget {
@@ -21,6 +27,9 @@ class _NearbyPlacesScreenState extends State<NearbyPlacesScreen> {
   final _locationService = UserLocationService();
   final _radiusKm = signal<double>(10);
   final _isLocating = signal(false);
+  List<CategoryEntity> _categories = const [];
+  String? _selectedCategorySlug;
+  int? _selectedCategoryId;
 
   @override
   void initState() {
@@ -37,7 +46,21 @@ class _NearbyPlacesScreenState extends State<NearbyPlacesScreen> {
 
   Future<void> _initialize() async {
     await _store.init();
+    await _loadCategories();
     await _loadNearbyPlaces();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheService = CacheService(prefs);
+      final repository = CategoryRepositoryImpl(
+        dioService: DioService(cacheService),
+      );
+      final categories = await repository.getCategories();
+      if (!mounted) return;
+      setState(() => _categories = categories);
+    } catch (_) {}
   }
 
   Future<void> _loadNearbyPlaces() async {
@@ -48,6 +71,8 @@ class _NearbyPlacesScreenState extends State<NearbyPlacesScreen> {
         latitude: position.latitude,
         longitude: position.longitude,
         radiusKm: _radiusKm.value,
+        categorySlug: _selectedCategorySlug,
+        categoryId: _selectedCategoryId,
       );
       if (!mounted) return;
       if (_store.errorMessage.value != null) {
@@ -137,6 +162,27 @@ class _NearbyPlacesScreenState extends State<NearbyPlacesScreen> {
         ),
         body: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              child: CategoryFilterChipsBar(
+                categories: _categories,
+                selectedSlug: _selectedCategorySlug,
+                allLabel: 'Tous',
+                onSelected: (category) {
+                  final nextSlug = category?.slug;
+                  final nextId = category?.id;
+                  if (_selectedCategorySlug == nextSlug &&
+                      _selectedCategoryId == nextId) {
+                    return;
+                  }
+                  setState(() {
+                    _selectedCategorySlug = nextSlug;
+                    _selectedCategoryId = nextId;
+                  });
+                  _loadNearbyPlaces();
+                },
+              ),
+            ),
             Expanded(
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())

@@ -198,6 +198,8 @@ class PlaceStore {
     required double latitude,
     required double longitude,
     double radiusKm = 10,
+    String? categorySlug,
+    int? categoryId,
   }) async {
     if (_repository == null) await init();
     final repository = _repository;
@@ -211,6 +213,8 @@ class PlaceStore {
         latitude: latitude,
         longitude: longitude,
         radiusKm: radiusKm,
+        categorySlug: categorySlug,
+        categoryId: categoryId,
       );
       isOffline.value = false;
       nearbyPlaces.value = result;
