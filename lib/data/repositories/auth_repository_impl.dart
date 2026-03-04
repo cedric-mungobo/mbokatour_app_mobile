@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../core/constants/app_config.dart';
 import '../../core/services/cache_service.dart';
 import '../../core/services/dio_service.dart';
 import '../../domain/entities/user_entity.dart';
@@ -110,9 +110,33 @@ class AuthRepositoryImpl {
 
       return finalUser;
     } on GoogleSignInException catch (e) {
+      final details = '${e.description ?? ''} ${e.details ?? ''}'
+          .toLowerCase();
       switch (e.code) {
         case GoogleSignInExceptionCode.canceled:
         case GoogleSignInExceptionCode.interrupted:
+          // Some Android production OAuth failures are surfaced as
+          // canceled/interrupted depending on provider state.
+          if (details.contains('12500') ||
+              details.contains('10') ||
+              details.contains('developer error') ||
+              details.contains('configuration') ||
+              details.contains('oauth') ||
+              details.contains('sha')) {
+            throw const AuthException(
+              code: 'config_error',
+              message: 'Configuration Google Sign-In invalide.',
+            );
+          }
+          if (details.contains('network') ||
+              details.contains('internet') ||
+              details.contains('timeout') ||
+              details.contains('socket')) {
+            throw const AuthException(
+              code: 'network_error',
+              message: 'Problème réseau. Vérifiez votre connexion.',
+            );
+          }
           throw const AuthException(
             code: 'cancelled',
             message: 'Connexion Google annulée.',
@@ -122,11 +146,9 @@ class AuthRepositoryImpl {
         case GoogleSignInExceptionCode.uiUnavailable:
           throw const AuthException(
             code: 'config_error',
-            message: 'Configuration Google Sign-In invalide.',
-          );
+              message: 'Configuration Google Sign-In invalide.',
+            );
         default:
-          final details = '${e.description ?? ''} ${e.details ?? ''}'
-              .toLowerCase();
           if (details.contains('network') ||
               details.contains('internet') ||
               details.contains('timeout') ||
@@ -489,14 +511,12 @@ class AuthRepositoryImpl {
       return;
     }
 
-    final serverClientId = dotenv.env['GOOGLE_SERVER_CLIENT_ID']?.trim();
-    final clientId = dotenv.env['GOOGLE_CLIENT_ID']?.trim();
+    final serverClientId = AppConfig.googleServerClientId.trim();
+    final clientId = AppConfig.googleClientId.trim();
 
     _googleInitFuture = _googleSignIn.initialize(
-      clientId: (clientId != null && clientId.isNotEmpty) ? clientId : null,
-      serverClientId: (serverClientId != null && serverClientId.isNotEmpty)
-          ? serverClientId
-          : null,
+      clientId: clientId.isNotEmpty ? clientId : null,
+      serverClientId: serverClientId.isNotEmpty ? serverClientId : null,
     );
     await _googleInitFuture;
   }

@@ -1,21 +1,39 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/storage_constants.dart';
 
 class CacheService {
+  static const _secureStorage = FlutterSecureStorage();
   final SharedPreferences _prefs;
 
   CacheService(this._prefs);
 
   // Token
   Future<void> saveToken(String token) async {
-    await _prefs.setString(StorageConstants.userToken, token);
+    await _secureStorage.write(key: StorageConstants.userToken, value: token);
+    // Backward compatibility migration: ensure old plain token is removed.
+    await _prefs.remove(StorageConstants.userToken);
   }
 
   Future<String?> getToken() async {
-    return _prefs.getString(StorageConstants.userToken);
+    final secureToken = await _secureStorage.read(key: StorageConstants.userToken);
+    if (secureToken != null && secureToken.isNotEmpty) return secureToken;
+
+    // Migration path for already installed app versions.
+    final legacyToken = _prefs.getString(StorageConstants.userToken);
+    if (legacyToken != null && legacyToken.isNotEmpty) {
+      await _secureStorage.write(
+        key: StorageConstants.userToken,
+        value: legacyToken,
+      );
+      await _prefs.remove(StorageConstants.userToken);
+      return legacyToken;
+    }
+    return null;
   }
 
   Future<void> removeToken() async {
+    await _secureStorage.delete(key: StorageConstants.userToken);
     await _prefs.remove(StorageConstants.userToken);
   }
 
@@ -66,6 +84,7 @@ class CacheService {
 
   // Clear all data
   Future<void> clearAll() async {
+    await _secureStorage.delete(key: StorageConstants.userToken);
     await _prefs.clear();
   }
 }

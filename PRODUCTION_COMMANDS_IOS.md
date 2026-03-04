@@ -48,7 +48,11 @@ cd ..
 
 ```bash
 cd /Users/macbook/Desktop/Developer/Personnel/mbokatour_app_mobile
-flutter build ios --release
+flutter build ios --release \
+  --dart-define=BASE_URL=https://mbokatour.com/api \
+  --dart-define=API_KEY=YOUR_API_KEY \
+  --dart-define=GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID \
+  --dart-define=GOOGLE_SERVER_CLIENT_ID=YOUR_GOOGLE_SERVER_CLIENT_ID
 ```
 
 ## 5) Archive depuis Xcode (recommande pour distribution)
@@ -94,5 +98,5 @@ xcodebuild \
 
 ## 9) Notes securite
 
-- Ne pas commit de secrets/signing sensibles.
+- Ne pas commit de secrets/signing sensibles (`.env`, `key.properties`, `.jks`).
 - Documenter certificats/profils dans un coffre equipe.

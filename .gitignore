@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+android/key.properties
+android/*.jks
+android/*.keystore
+
+# iOS local build artifacts
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/

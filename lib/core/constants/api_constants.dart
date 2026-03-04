@@ -1,13 +1,11 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'app_config.dart';
 
 class ApiConstants {
-  static const String _defaultBaseUrl = 'https://mbokatour.com/api';
-
   // API key (Postman: X-API-Key)
   static const String apiKeyHeader = 'X-API-Key';
-  static String get apiKey => dotenv.env['API_KEY'] ?? '';
+  static String get apiKey => AppConfig.apiKey.trim();
   static String get baseUrl {
-    final raw = dotenv.env['BASE_URL'] ?? _defaultBaseUrl;
+    final raw = AppConfig.baseUrl.trim();
     return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
   }
 

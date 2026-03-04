@@ -47,5 +47,9 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Mbokatour utilise votre position pour renseigner automatiquement les coordonnees du lieu.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MbokaTour a besoin d'acceder a votre phototheque pour ajouter des photos de lieux.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>MbokaTour peut enregistrer des medias lies aux contributions utilisateur.</string>
 </dict>
 </plist>
