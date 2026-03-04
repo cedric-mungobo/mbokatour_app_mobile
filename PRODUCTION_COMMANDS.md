@@ -82,7 +82,6 @@ flutter test
 
 ## 7) Build de production (AAB recommande pour Play Store)
 
-flutter build appbundle --release --dart-define-from-file=.env
 
 
 AAB:

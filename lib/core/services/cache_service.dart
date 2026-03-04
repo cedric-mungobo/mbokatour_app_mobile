@@ -82,6 +82,47 @@ class CacheService {
     return _prefs.getBool(StorageConstants.preferencesOnboardingDone) ?? false;
   }
 
+  // First-time textual guides
+  Future<void> saveHomeGuideSeen(bool isSeen) async {
+    await _prefs.setBool(StorageConstants.homeGuideSeen, isSeen);
+  }
+
+  Future<bool> isHomeGuideSeen() async {
+    return _prefs.getBool(StorageConstants.homeGuideSeen) ?? false;
+  }
+
+  Future<void> saveHomeButtonsGuideSeen(bool isSeen) async {
+    await _prefs.setBool(StorageConstants.homeButtonsGuideSeen, isSeen);
+  }
+
+  Future<bool> isHomeButtonsGuideSeen() async {
+    return _prefs.getBool(StorageConstants.homeButtonsGuideSeen) ?? false;
+  }
+
+  Future<void> saveBoredGuideSeen(bool isSeen) async {
+    await _prefs.setBool(StorageConstants.boredGuideSeen, isSeen);
+  }
+
+  Future<bool> isBoredGuideSeen() async {
+    return _prefs.getBool(StorageConstants.boredGuideSeen) ?? false;
+  }
+
+  Future<void> savePreferencesGuideSeen(bool isSeen) async {
+    await _prefs.setBool(StorageConstants.preferencesGuideSeen, isSeen);
+  }
+
+  Future<bool> isPreferencesGuideSeen() async {
+    return _prefs.getBool(StorageConstants.preferencesGuideSeen) ?? false;
+  }
+
+  Future<void> saveProfileGuideSeen(bool isSeen) async {
+    await _prefs.setBool(StorageConstants.profileGuideSeen, isSeen);
+  }
+
+  Future<bool> isProfileGuideSeen() async {
+    return _prefs.getBool(StorageConstants.profileGuideSeen) ?? false;
+  }
+
   // Clear all data
   Future<void> clearAll() async {
     await _secureStorage.delete(key: StorageConstants.userToken);

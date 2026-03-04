@@ -27,6 +27,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _maybeShowPreferencesGuide();
   }
 
   Future<CategoryRepositoryImpl> _buildRepository() async {
@@ -82,6 +83,35 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       next.add(categoryId);
     }
     _selectedCategoryIds.value = next;
+  }
+
+  Future<void> _maybeShowPreferencesGuide() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cacheService = CacheService(prefs);
+    final alreadySeen = await cacheService.isPreferencesGuideSeen();
+    if (alreadySeen || !mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Guide rapide - Préférences'),
+          content: const Text(
+            '1. Sélectionnez une ou plusieurs catégories selon vos goûts.\n'
+            '2. Vous pouvez continuer même sans sélection.\n'
+            '3. Ces choix servent à personnaliser les recommandations.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Compris'),
+            ),
+          ],
+        ),
+      );
+      await cacheService.savePreferencesGuideSeen(true);
+    });
   }
 
   @override

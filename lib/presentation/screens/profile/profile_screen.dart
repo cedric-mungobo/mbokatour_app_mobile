@@ -20,6 +20,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late final Future<AuthRepositoryImpl> _repositoryFuture = _buildRepository();
   late final Future<UserEntity?> _userFuture = _loadUser();
 
+  @override
+  void initState() {
+    super.initState();
+    _maybeShowProfileGuide();
+  }
+
   Future<AuthRepositoryImpl> _buildRepository() async {
     final prefs = await SharedPreferences.getInstance();
     final cacheService = CacheService(prefs);
@@ -41,6 +47,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     NotificationService.success(context, 'Déconnexion réussie');
     context.go('/');
+  }
+
+  Future<void> _maybeShowProfileGuide() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cacheService = CacheService(prefs);
+    final alreadySeen = await cacheService.isProfileGuideSeen();
+    if (alreadySeen || !mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Guide rapide - Profil'),
+          content: const Text(
+            '1. Consultez ici vos informations de compte.\n'
+            '2. Vos Favoris et votre Historique se remplissent au fur et à mesure de votre utilisation.\n'
+            '3. Utilisez "Se déconnecter" pour fermer votre session en toute sécurité.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Compris'),
+            ),
+          ],
+        ),
+      );
+      await cacheService.saveProfileGuideSeen(true);
+    });
   }
 
   @override

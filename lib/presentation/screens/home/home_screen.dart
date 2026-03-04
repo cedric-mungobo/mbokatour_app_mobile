@@ -8,6 +8,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mbokatour_app_mobile/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/media_settings_service.dart';
 import '../../../core/services/cache_service.dart';
@@ -36,6 +37,14 @@ class _HomeScreenState extends State<HomeScreen> {
   List<CategoryEntity> _categories = const [];
   String? _selectedCategorySlug;
   bool _isBootstrapping = true;
+  bool _hasStartedGuide = false;
+
+  final _categoryFilterKey = GlobalKey();
+  final _searchFieldKey = GlobalKey();
+  final _boredButtonKey = GlobalKey();
+  final _contributeButtonKey = GlobalKey();
+  final _profileButtonKey = GlobalKey();
+  final _firstPlaceCardKey = GlobalKey();
 
   @override
   void initState() {
@@ -63,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _isBootstrapping = false;
         });
+        _maybeStartHomeGuide();
       }
     }
   }
@@ -113,6 +123,139 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openContribute() {
     context.go('/contribute');
+  }
+
+  Future<void> _maybeStartHomeGuide() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cacheService = CacheService(prefs);
+    final alreadySeen = await cacheService.isHomeGuideSeen();
+    if (alreadySeen || !mounted || _hasStartedGuide) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || _hasStartedGuide) return;
+      // Wait until key widgets are mounted (especially first place card).
+      for (var i = 0; i < 8; i++) {
+        final hasRequiredTargets =
+            _categoryFilterKey.currentContext != null &&
+            _searchFieldKey.currentContext != null &&
+            _boredButtonKey.currentContext != null &&
+            _contributeButtonKey.currentContext != null &&
+            _profileButtonKey.currentContext != null;
+
+        final hasPlaceCardTarget =
+            _store.places.value.isEmpty || _firstPlaceCardKey.currentContext != null;
+
+        if (hasRequiredTargets && hasPlaceCardTarget) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 180));
+      }
+      if (!mounted) return;
+      _hasStartedGuide = true;
+      final guide = TutorialCoachMark(
+        targets: _buildGuideTargets(),
+        colorShadow: Colors.black,
+        opacityShadow: 0.78,
+        hideSkip: false,
+        textSkip: 'Passer',
+        onSkip: () {
+          cacheService.saveHomeGuideSeen(true);
+          return true;
+        },
+        onFinish: () async {
+          await cacheService.saveHomeGuideSeen(true);
+        },
+      );
+      guide.show(context: context);
+    });
+  }
+
+  List<TargetFocus> _buildGuideTargets() {
+    final targets = <TargetFocus>[
+      _target(
+        key: _categoryFilterKey,
+        title: 'Filtrer les lieux',
+        description:
+            'Appuyez ici pour choisir une catégorie et afficher uniquement les lieux qui vous intéressent.',
+        align: ContentAlign.bottom,
+      ),
+      _target(
+        key: _searchFieldKey,
+        title: 'Rechercher un lieu',
+        description:
+            'Appuyez sur cette barre, puis saisissez le nom d’un lieu pour le trouver rapidement.',
+        align: ContentAlign.top,
+      ),
+      _target(
+        key: _boredButtonKey,
+        title: 'Voir autour de moi',
+        description:
+            'Appuyez sur ce bouton pour découvrir les lieux proches de votre position.',
+        align: ContentAlign.top,
+      ),
+      _target(
+        key: _contributeButtonKey,
+        title: 'Contribuer',
+        description:
+            'Appuyez ici pour ajouter un lieu et partager les endroits que vous avez visités.',
+        align: ContentAlign.top,
+      ),
+    ];
+
+    if (_store.places.value.isNotEmpty) {
+      targets.add(
+        _target(
+          key: _firstPlaceCardKey,
+          title: 'Ouvrir les détails',
+          description:
+              'Appuyez sur une image pour afficher la fiche complète du lieu.',
+          align: ContentAlign.bottom,
+        ),
+      );
+    }
+
+    targets.add(
+      _target(
+        key: _profileButtonKey,
+        title: 'Profil',
+        description:
+            'Appuyez ici pour accéder à votre profil et gérer votre compte.',
+        align: ContentAlign.top,
+        isLast: true,
+      ),
+    );
+
+    return targets;
+  }
+
+  TargetFocus _target({
+    required GlobalKey key,
+    required String title,
+    required String description,
+    ContentAlign align = ContentAlign.top,
+    bool isLast = false,
+  }) {
+    return TargetFocus(
+      keyTarget: key,
+      enableOverlayTab: true,
+      contents: [
+        TargetContent(
+          align: align,
+          builder: (context, controller) => _GuideCard(
+            title: title,
+            description: description,
+            isLast: isLast,
+            onNext: () {
+              if (isLast) {
+                controller.skip();
+                return;
+              }
+              controller.next();
+            },
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -198,7 +341,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               itemCount: places.length,
                               itemBuilder: (context, index) {
                                 final place = places[index];
-                                return PlaceCard(
+                                final card = PlaceCard(
                                   place: place,
                                   aspectRatio: _resolveAspectRatio(place),
                                   isMuted: isMuted,
@@ -211,6 +354,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   end: 0,
                                   curve: Curves.easeOutCubic,
                                 );
+                                if (index == 0) {
+                                  return Container(key: _firstPlaceCardKey, child: card);
+                                }
+                                return card;
                               },
                             ),
                           if (isLoadingMore)
@@ -233,6 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   right: 10,
                   top: topInset + 6,
                   child: SizedBox(
+                    key: _categoryFilterKey,
                     height: topFiltersHeight,
                     child: CategoryFilterChipsBar(
                       categories: _categories,
@@ -262,6 +410,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     onBoredTap: _openBoredSheet,
                     onContributeTap: _openContribute,
                     onProfileTap: _openProfile,
+                    searchFieldKey: _searchFieldKey,
+                    boredButtonKey: _boredButtonKey,
+                    contributeButtonKey: _contributeButtonKey,
+                    profileButtonKey: _profileButtonKey,
                   ).animate().fadeIn(delay: 220.ms, duration: 300.ms).slideY(
                     begin: 0.08,
                     end: 0,
@@ -308,6 +460,10 @@ class _BottomSearchBar extends StatefulWidget {
   final VoidCallback onBoredTap;
   final VoidCallback onContributeTap;
   final VoidCallback onProfileTap;
+  final GlobalKey searchFieldKey;
+  final GlobalKey boredButtonKey;
+  final GlobalKey contributeButtonKey;
+  final GlobalKey profileButtonKey;
 
   const _BottomSearchBar({
     required this.controller,
@@ -315,6 +471,10 @@ class _BottomSearchBar extends StatefulWidget {
     required this.onBoredTap,
     required this.onContributeTap,
     required this.onProfileTap,
+    required this.searchFieldKey,
+    required this.boredButtonKey,
+    required this.contributeButtonKey,
+    required this.profileButtonKey,
   });
 
   @override
@@ -354,29 +514,32 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
             const Icon(AppIcons.search, color: Colors.black45, size: 20),
             const SizedBox(width: 8),
             Expanded(
-              child: TextField(
-                controller: widget.controller,
-                focusNode: _focusNode,
-                textInputAction: TextInputAction.search,
-                onChanged: widget.onChanged,
-                onSubmitted: widget.onChanged,
-                style: const TextStyle(
-                  color: Colors.black87,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                ),
-                decoration: const InputDecoration(
-                  hintText: 'Search locations...',
-                  hintStyle: TextStyle(
-                    color: Colors.black38,
+              child: Container(
+                key: widget.searchFieldKey,
+                child: TextField(
+                  controller: widget.controller,
+                  focusNode: _focusNode,
+                  textInputAction: TextInputAction.search,
+                  onChanged: widget.onChanged,
+                  onSubmitted: widget.onChanged,
+                  style: const TextStyle(
+                    color: Colors.black87,
                     fontSize: 15,
                     fontWeight: FontWeight.w400,
                   ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
+                  decoration: const InputDecoration(
+                    hintText: 'Search locations...',
+                    hintStyle: TextStyle(
+                      color: Colors.black38,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 ),
               ),
             ),
@@ -384,6 +547,7 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
               width: 32,
               height: 32,
               child: IconButton(
+                key: widget.boredButtonKey,
                 tooltip: 'Je m\'ennuie',
                 padding: EdgeInsets.zero,
                 onPressed: widget.onBoredTap,
@@ -398,6 +562,7 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
               width: 32,
               height: 32,
               child: IconButton(
+                key: widget.contributeButtonKey,
                 tooltip: 'Contribuer',
                 padding: EdgeInsets.zero,
                 onPressed: widget.onContributeTap,
@@ -412,14 +577,86 @@ class _BottomSearchBarState extends State<_BottomSearchBar> {
               width: 32,
               height: 32,
               child: IconButton(
+                key: widget.profileButtonKey,
                 tooltip: 'Profil',
                 padding: EdgeInsets.zero,
                 onPressed: widget.onProfileTap,
                 icon: const Icon(
                   AppIcons.person_outline_rounded,
                   size: 18,
-                  color: Colors.black54,
+                  color: Colors.black38,
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GuideCard extends StatelessWidget {
+  final String title;
+  final String description;
+  final bool isLast;
+  final VoidCallback onNext;
+
+  const _GuideCard({
+    required this.title,
+    required this.description,
+    required this.isLast,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 300,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF111111),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.35,
+                color: Color(0xFF2B2B2B),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF111111),
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: onNext,
+                child: Text(isLast ? 'Terminer' : 'Suivant'),
               ),
             ),
           ],
