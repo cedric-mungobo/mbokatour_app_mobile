@@ -101,11 +101,11 @@ class PlaceCard extends StatelessWidget {
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.90),
-                        Colors.black.withValues(alpha: 0.40),
+                        Colors.black.withValues(alpha: 0.52),
+                        Colors.black.withValues(alpha: 0.16),
                         Colors.transparent,
                       ],
-                      stops: const [0.0, 0.50, 1.0],
+                      stops: const [0.0, 0.36, 1.0],
                     ),
                   ),
                 ),
@@ -114,30 +114,42 @@ class PlaceCard extends StatelessWidget {
               left: 14,
               right: 14,
               bottom: 12,
-              child: Row(
-                children: [
-                  if (place.hasVideo) ...[
-                    const Icon(
-                      AppIcons.videocam_outlined,
-                      size: 14,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        letterSpacing: 0.8,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
                   ),
-                ],
+                  child: Row(
+                    children: [
+                      if (place.hasVideo) ...[
+                        const Icon(
+                          AppIcons.videocam_outlined,
+                          size: 14,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 6),
+                      ],
+                      Expanded(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            letterSpacing: 0.8,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
