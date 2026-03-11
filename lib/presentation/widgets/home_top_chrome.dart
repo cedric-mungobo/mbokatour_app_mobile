@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mbokatour_app_mobile/core/constants/app_config.dart';
+import 'package:mbokatour_app_mobile/core/theme/app_theme.dart';
 
 import '../../core/theme/app_icons.dart';
 import '../../domain/entities/category_entity.dart';
@@ -29,7 +31,7 @@ class HomeTopHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF0D0D0D),
+      color:  AppTheme.brandBlack,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(10, 2, 10, 4),
         child: Column(
