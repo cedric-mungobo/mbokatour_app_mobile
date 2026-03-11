@@ -184,6 +184,9 @@ class PlaceModel extends PlaceEntity {
           url: url,
           type: type,
           isPrimary: itemMap['is_primary'] == true,
+          width: _asNullableInt(itemMap['width']),
+          height: _asNullableInt(itemMap['height']),
+          orientation: _normalizeOrientation(_asString(itemMap['orientation'])),
         ),
       );
     }
@@ -287,6 +290,24 @@ class PlaceModel extends PlaceEntity {
     if (value == null) return null;
     if (value is num) return value.toDouble();
     return double.tryParse(value.toString());
+  }
+
+  static int? _asNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
+  static String? _normalizeOrientation(String? value) {
+    if (value == null) return null;
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'portrait' ||
+        normalized == 'landscape' ||
+        normalized == 'square') {
+      return normalized;
+    }
+    return null;
   }
 
   static DateTime? _asDateTime(dynamic value) {

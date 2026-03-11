@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mbokatour_app_mobile/core/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/media_metadata_resolver.dart';
 import '../../../core/services/media_settings_service.dart';
 import '../../../core/services/cache_service.dart';
 import '../../../core/services/dio_service.dart';
@@ -31,6 +31,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const double _portraitAspectRatio = 3 / 4;
+  static const double _landscapeAspectRatio = 16 / 9;
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _searchController = TextEditingController();
   Timer? _searchDebounce;
@@ -39,6 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _selectedCategorySlug;
   bool _isBootstrapping = true;
   bool _hasStartedGuide = false;
+  final Map<String, double> _resolvedAspectRatios = <String, double>{};
+  final Set<String> _resolvingAspectRatios = <String>{};
 
   final _categoryFilterKey = GlobalKey();
   final _searchFieldKey = GlobalKey();
@@ -97,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
       categorySlug: _selectedCategorySlug,
       forceRefresh: forceRefresh,
     );
+    _primeVisibleMediaRatios();
     if (mounted && _store.errorMessage.value != null) {
       NotificationService.error(context, _store.errorMessage.value!);
     }
@@ -105,6 +110,38 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onSearchChanged(String value) {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 350), _loadPlaces);
+  }
+
+  void _primeVisibleMediaRatios() {
+    final places = _store.places.value;
+    for (final place in places) {
+      final media = place.primaryMedia;
+      if (media == null) continue;
+      if (_resolvedAspectRatios.containsKey(place.id)) continue;
+      if (_preferredAspectRatio(place) != null) continue;
+      if (_resolvingAspectRatios.contains(place.id)) continue;
+      _resolveAspectRatioFromMedia(place, media);
+    }
+  }
+
+  Future<void> _resolveAspectRatioFromMedia(
+    PlaceEntity place,
+    PlaceMedia media,
+  ) async {
+    _resolvingAspectRatios.add(place.id);
+    try {
+      final ratio = await MediaMetadataResolver.resolveAspectRatio(
+        url: media.url,
+        isVideo: media.canPlayVideo,
+      );
+      if (!mounted || ratio == null) return;
+      final normalized = ratio.clamp(0.65, 1.55);
+      setState(() {
+        _resolvedAspectRatios[place.id] = normalized;
+      });
+    } finally {
+      _resolvingAspectRatios.remove(place.id);
+    }
   }
 
   Future<void> _openBoredSheet() async {
@@ -393,41 +430,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         else
                           SliverPadding(
                             padding: const EdgeInsets.only(bottom: 24),
-                            sliver: SliverMasonryGrid.count(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: 0,
-                              crossAxisSpacing: 0,
-                              childCount: places.length,
-                              itemBuilder: (context, index) {
-                                final place = places[index];
-                                final card =
-                                    PlaceCard(
-                                          place: place,
-                                          aspectRatio: _resolveAspectRatio(
-                                            place,
-                                          ),
-                                          isMuted: isMuted,
-                                          onTap: () => context.push(
-                                            '/place/${place.id}',
-                                          ),
-                                        )
-                                        .animate(
-                                          delay: (50 + (index % 10) * 30).ms,
-                                        )
-                                        .fadeIn(duration: 260.ms)
-                                        .slideY(
-                                          begin: 0.04,
-                                          end: 0,
-                                          curve: Curves.easeOutCubic,
-                                        );
-                                if (index == 0) {
-                                  return Container(
-                                    key: _firstPlaceCardKey,
-                                    child: card,
-                                  );
-                                }
-                                return card;
-                              },
+                            sliver: SliverToBoxAdapter(
+                              child: Column(
+                                children: _buildPlaceRows(places, isMuted),
+                              ),
                             ),
                           ),
                         if (isLoadingMore)
@@ -481,7 +487,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   double _resolveAspectRatio(PlaceEntity place) {
-    final primaryUrl = place.videoUrl ?? place.imageUrl;
+    if (_isLandscapePlace(place)) return _landscapeAspectRatio;
+    if (_isPortraitPlace(place)) return _portraitAspectRatio;
+    if (_isSquarePlace(place)) return 1;
+
+    final preferred = _preferredAspectRatio(place);
+    if (preferred != null) {
+      return preferred.clamp(0.65, 1.55);
+    }
+
+    final resolved = _resolvedAspectRatios[place.id];
+    if (resolved != null) {
+      return resolved;
+    }
+
+    final primaryUrl = place.primaryMedia?.url ?? place.videoUrl ?? place.imageUrl;
     final fromUrl = _extractRatioFromUrl(primaryUrl);
     if (fromUrl != null) {
       return fromUrl.clamp(0.65, 1.55);
@@ -494,6 +514,133 @@ class _HomeScreenState extends State<HomeScreen> {
     return variants[seed % variants.length];
   }
 
+  List<Widget> _buildPlaceRows(List<PlaceEntity> places, bool isMuted) {
+    final rows = <Widget>[];
+    final landscapes = <_PlaceGridItem>[];
+    final portraits = <_PlaceGridItem>[];
+
+    for (var index = 0; index < places.length; index++) {
+      final item = _PlaceGridItem(index: index, place: places[index]);
+      if (_isLandscapePlace(item.place)) {
+        landscapes.add(item);
+      } else {
+        portraits.add(item);
+      }
+    }
+
+    while (landscapes.isNotEmpty || portraits.isNotEmpty) {
+      if (landscapes.isNotEmpty) {
+        rows.add(_buildFullWidthPlace(landscapes.removeAt(0), isMuted));
+      }
+
+      if (portraits.isNotEmpty) {
+        final first = portraits.removeAt(0);
+        final second = portraits.isNotEmpty ? portraits.removeAt(0) : null;
+        rows.add(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildPlaceCard(first, isMuted)),
+              if (second != null) ...[
+                const SizedBox(width: 0),
+                Expanded(child: _buildPlaceCard(second, isMuted)),
+              ] else
+                const Expanded(child: SizedBox.shrink()),
+            ],
+          ),
+        );
+      }
+    }
+
+    return rows;
+  }
+
+  Widget _buildFullWidthPlace(_PlaceGridItem item, bool isMuted) {
+    return _buildPlaceCard(item, isMuted);
+  }
+
+  Widget _buildPlaceCard(_PlaceGridItem item, bool isMuted) {
+    final card =
+        PlaceCard(
+              place: item.place,
+              aspectRatio: _resolveAspectRatio(item.place),
+              isMuted: isMuted,
+              onTap: () => context.push('/place/${item.place.id}'),
+            )
+            .animate(delay: (50 + (item.index % 10) * 30).ms)
+            .fadeIn(duration: 260.ms)
+            .slideY(begin: 0.04, end: 0, curve: Curves.easeOutCubic);
+
+    if (item.index == 0) {
+      return Container(key: _firstPlaceCardKey, child: card);
+    }
+    return card;
+  }
+
+  double? _preferredAspectRatio(PlaceEntity place) {
+    final media = place.primaryMedia;
+    if (media == null) return null;
+
+    final fromDimensions = media.aspectRatio;
+    if (fromDimensions != null && fromDimensions.isFinite && fromDimensions > 0) {
+      if (fromDimensions > 1.02) return _landscapeAspectRatio;
+      if ((fromDimensions - 1).abs() < 0.05) return 1;
+      return _portraitAspectRatio;
+    }
+
+    final ratio = _resolvedAspectRatios[place.id];
+    if (ratio != null) {
+      if (ratio > 1.02) return _landscapeAspectRatio;
+      if ((ratio - 1).abs() < 0.05) return 1;
+      return _portraitAspectRatio;
+    }
+
+    final fromUrl = _extractRatioFromUrl(media.url);
+    if (fromUrl != null) {
+      if (fromUrl > 1.02) return _landscapeAspectRatio;
+      if ((fromUrl - 1).abs() < 0.05) return 1;
+      return _portraitAspectRatio;
+    }
+
+    switch (media.orientation) {
+      case 'portrait':
+        return _portraitAspectRatio;
+      case 'landscape':
+        return _landscapeAspectRatio;
+      case 'square':
+        return 1.0;
+    }
+
+    final cached = MediaMetadataResolver.cachedRatio(media.url);
+    if (cached != null) {
+      if (cached > 1.02) return _landscapeAspectRatio;
+      if ((cached - 1).abs() < 0.05) return 1;
+      return _portraitAspectRatio;
+    }
+    return null;
+  }
+
+  bool _isLandscapePlace(PlaceEntity place) {
+    final media = place.primaryMedia;
+    if (media?.orientation == 'landscape') return true;
+    final ratio = _preferredAspectRatio(place);
+    return ratio != null && ratio > 1.02;
+  }
+
+  bool _isPortraitPlace(PlaceEntity place) {
+    final media = place.primaryMedia;
+    if (media?.orientation == 'portrait') return true;
+    final ratio = _preferredAspectRatio(place);
+    return ratio != null && ratio < 0.98;
+  }
+
+  bool _isSquarePlace(PlaceEntity place) {
+    final media = place.primaryMedia;
+    if (media?.orientation == 'square') return true;
+    final ratio = _preferredAspectRatio(place);
+    return ratio != null && (ratio - 1).abs() < 0.05;
+  }
+
   double? _extractRatioFromUrl(String? url) {
     if (url == null || url.isEmpty) return null;
     final match = RegExp(r'(\d{2,5})x(\d{2,5})').firstMatch(url);
@@ -504,6 +651,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (width == null || height == null || height == 0) return null;
     return width / height;
   }
+}
+
+class _PlaceGridItem {
+  final int index;
+  final PlaceEntity place;
+
+  const _PlaceGridItem({required this.index, required this.place});
 }
 
 class _GuideCard extends StatelessWidget {

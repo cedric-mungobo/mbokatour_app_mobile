@@ -849,6 +849,9 @@ class PlaceStore {
               'id': media.id,
               'type': media.type,
               'is_primary': media.isPrimary,
+              'width': media.width,
+              'height': media.height,
+              'orientation': media.orientation,
               if (media.isVideo)
                 'video_url': media.url
               else

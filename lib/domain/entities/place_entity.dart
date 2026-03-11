@@ -150,17 +150,27 @@ class PlaceMedia extends Equatable {
   final String url;
   final String type; // photo | video
   final bool isPrimary;
+  final int? width;
+  final int? height;
+  final String? orientation;
 
   const PlaceMedia({
     required this.id,
     required this.url,
     required this.type,
     this.isPrimary = false,
+    this.width,
+    this.height,
+    this.orientation,
   });
 
   bool get isVideo => type.toLowerCase() == 'video';
   bool get isPhoto => type.toLowerCase() == 'photo';
   bool get canPlayVideo => isVideo && _isLikelyVideoUrl(url);
+  bool get hasDimensions =>
+      width != null && height != null && width! > 0 && height! > 0;
+  double? get aspectRatio =>
+      hasDimensions ? width!.toDouble() / height!.toDouble() : null;
 
   static bool _isLikelyVideoUrl(String value) {
     final lower = value.toLowerCase();
@@ -173,7 +183,15 @@ class PlaceMedia extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, url, type, isPrimary];
+  List<Object?> get props => [
+    id,
+    url,
+    type,
+    isPrimary,
+    width,
+    height,
+    orientation,
+  ];
 }
 
 class PlaceEntity extends Equatable {
@@ -206,6 +224,14 @@ class PlaceEntity extends Equatable {
   final bool hasVideo;
   final List<PlaceMedia> media;
   final PlaceImmersiveTour? immersiveTour;
+
+  PlaceMedia? get primaryMedia {
+    if (media.isEmpty) return null;
+    for (final item in media) {
+      if (item.isPrimary) return item;
+    }
+    return media.first;
+  }
 
   const PlaceEntity({
     required this.id,
