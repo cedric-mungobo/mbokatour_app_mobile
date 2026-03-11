@@ -130,6 +130,10 @@ class _HomeScreenState extends State<HomeScreen> {
     context.go('/sections');
   }
 
+  void _openFavorites() {
+    context.go('/favorites');
+  }
+
   void _openPreferences() {
     context.go('/preferences');
   }
@@ -299,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const bottomDockHeight = 96.0;
+    const bottomListSpacing = 20.0;
     const fixedHeaderHeight = 76.0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -322,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onHomeTap: () {},
                   onExploreTap: _openBoredSheet,
                   onContributeTap: _openSearchSheet,
-                  onSavedTap: _openSections,
+                  onSavedTap: _openFavorites,
                   onProfileTap: _openProfile,
                   boredButtonKey: _boredButtonKey,
                   contributeButtonKey: _contributeButtonKey,
@@ -440,8 +444,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     !isLoadingMore &&
                                     places.isNotEmpty &&
                                     !_store.hasMorePlaces.value)
-                                ? bottomDockHeight + 24
-                                : bottomDockHeight,
+                                ? bottomListSpacing + 12
+                                : bottomListSpacing,
                           ),
                         ),
                       ],

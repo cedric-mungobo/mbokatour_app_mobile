@@ -135,16 +135,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: AppIcons.settings_outlined,
                 title: 'Paramètres',
                 subtitle: 'Préférences de compte et application',
+                onTap: () => context.push('/preferences'),
               ),
               _ProfileTile(
                 icon: AppIcons.favorite_border,
                 title: 'Favoris',
                 subtitle: 'Retrouver vos lieux sauvegardés',
+                onTap: () => context.push('/favorites'),
               ),
               _ProfileTile(
                 icon: AppIcons.history,
                 title: 'Historique',
                 subtitle: 'Dernières visites et recherches',
+                onTap: () => context.push('/history'),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -167,11 +170,13 @@ class _ProfileTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback onTap;
 
   const _ProfileTile({
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.onTap,
   });
 
   @override
@@ -181,7 +186,7 @@ class _ProfileTile extends StatelessWidget {
       leading: Icon(icon),
       title: Text(title),
       subtitle: Text(subtitle),
-      onTap: () {},
+      onTap: onTap,
     );
   }
 }

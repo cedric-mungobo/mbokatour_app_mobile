@@ -271,422 +271,428 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 },
               )
             : null,
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (place.media.isNotEmpty) ...[
-                _MediaBentoGrid(
-                  media: place.media,
-                  onTapMedia: (index) => _openMediaViewer(index, place.media),
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              Wrap(
-                spacing: 16,
-                runSpacing: 8,
-                children: [
-                  _StatMiniItem(
-                    icon: AppIcons.favorite_outline,
-                    value: place.stats.likesCount.toString(),
-                    isActive: isLiked,
-                    isLoading: isTogglingLike,
-                    onTap: _toggleLike,
+        body: RefreshIndicator(
+          onRefresh: () => _loadPlaceDetails(forceRefresh: true),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(10.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (place.media.isNotEmpty) ...[
+                  _MediaBentoGrid(
+                    media: place.media,
+                    onTapMedia: (index) => _openMediaViewer(index, place.media),
                   ),
-                  _StatMiniItem(
-                    icon: AppIcons.visibility_outlined,
-                    value: place.stats.visitsCount.toString(),
-                  ),
-                  _StatMiniItem(
-                    icon: AppIcons.rate_review_outlined,
-                    value: place.stats.reviewsCount.toString(),
-                  ),
-                  _StatMiniItem(
-                    icon: AppIcons.bookmark_border_outlined,
-                    value: place.stats.favoritesCount.toString(),
-                    isActive: isFavorited,
-                    isLoading: isTogglingFavorite,
-                    onTap: _toggleFavorite,
-                  ),
+                  const SizedBox(height: 12),
                 ],
-              ),
 
-              const SizedBox(height: 20),
-              // Titre et note
-              Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            place.name,
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: [
+                    _StatMiniItem(
+                      icon: AppIcons.like,
+                      value: place.stats.likesCount.toString(),
+                      isActive: isLiked,
+                      isLoading: isTogglingLike,
+                      onTap: _toggleLike,
+                    ),
+                    _StatMiniItem(
+                      icon: AppIcons.visibility_outlined,
+                      value: place.stats.visitsCount.toString(),
+                    ),
+                    _StatMiniItem(
+                      icon: AppIcons.rate_review_outlined,
+                      value: place.stats.reviewsCount.toString(),
+                    ),
+                    _StatMiniItem(
+                      icon: AppIcons.favorite_border,
+                      value: place.stats.favoritesCount.toString(),
+                      isActive: isFavorited,
+                      isLoading: isTogglingFavorite,
+                      onTap: _toggleFavorite,
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+                // Titre et note
+                Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              place.name,
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          if (place.isVerified) ...[
+                            const SizedBox(width: 8),
+                            const Tooltip(
+                              message: 'Lieu certifié',
+                              child: Icon(
+                                AppIcons.verified_rounded,
+                                color: Colors.blue,
+                                size: 24,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (place.rating != null) ...[
+                      const Icon(AppIcons.star, color: Colors.amber, size: 28),
+                      const SizedBox(width: 4),
+                      Row(
+                        children: [
+                          Text(
+                            place.rating!.toStringAsFixed(1),
                             style: const TextStyle(
-                              fontSize: 28,
+                              fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                        if (place.isVerified) ...[
-                          const SizedBox(width: 8),
-                          const Tooltip(
-                            message: 'Lieu certifié',
-                            child: Icon(
-                              AppIcons.verified_rounded,
-                              color: Colors.blue,
-                              size: 24,
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 5),
+
+                if (place.categories.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: place.categories
+                        .map((name) => Chip(label: Text(name)))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 5),
+                ],
+
+                const SizedBox(height: 2),
+
+                if (hasLocationSection) ...[
+                  const _SectionTitle('Localisation'),
+                  _SectionCard(
+                    child: Column(
+                      children: [
+                        if (hasCity && hasCommune)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _DetailGridItem(
+                                  icon: AppIcons.location_city_outlined,
+                                  label: 'Ville',
+                                  value: place.city!,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _DetailGridItem(
+                                  icon: AppIcons.apartment_outlined,
+                                  label: 'Commune',
+                                  value: place.commune!,
+                                ),
+                              ),
+                            ],
+                          )
+                        else if (hasCity)
+                          _DetailGridItem(
+                            icon: AppIcons.location_city_outlined,
+                            label: 'Ville',
+                            value: place.city!,
+                            fullWidth: true,
+                          )
+                        else if (hasCommune)
+                          _DetailGridItem(
+                            icon: AppIcons.apartment_outlined,
+                            label: 'Commune',
+                            value: place.commune!,
+                            fullWidth: true,
+                          ),
+                        if (hasAddress) ...[
+                          const SizedBox(height: 10),
+                          _DetailGridItem(
+                            icon: AppIcons.location_on_outlined,
+                            label: 'Adresse',
+                            value: place.address!,
+                            fullWidth: true,
+                          ),
+                        ],
+                        if (hasDistance) ...[
+                          const SizedBox(height: 10),
+                          _DetailGridItem(
+                            icon: AppIcons.social_distance_outlined,
+                            label: 'Distance',
+                            value: '${place.distance} km',
+                            fullWidth: true,
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        if (hasCoordinates)
+                          _MiniPlaceMap(
+                            latitude: place.latitude!,
+                            longitude: place.longitude!,
+                            onTap: () => _openDirections(place),
+                          )
+                        else
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 18,
+                              horizontal: 12,
                             ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'Coordonnées indisponibles',
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+
+                const _SectionTitle('Description'),
+                const SizedBox(height: 1),
+                _SectionCard(
+                  child: Text(
+                    place.description.isNotEmpty
+                        ? place.description
+                        : 'Aucune description',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                if (hasContactsSection) ...[
+                  const SizedBox(height: 18),
+                  const _SectionTitle('Contacts'),
+                  _SectionCard(
+                    child: Column(
+                      children: [
+                        if (hasPhone && hasWhatsapp)
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _DetailGridItem(
+                                  icon: AppIcons.phone_outlined,
+                                  label: 'Téléphone',
+                                  value: place.phone!,
+                                  onTap: () => _openPhone(place.phone!),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _DetailGridItem(
+                                  icon: AppIcons.chat_outlined,
+                                  label: 'WhatsApp',
+                                  value: place.whatsapp!,
+                                  onTap: () => _openWhatsApp(place.whatsapp!),
+                                ),
+                              ),
+                            ],
+                          )
+                        else if (hasPhone)
+                          _DetailGridItem(
+                            icon: AppIcons.phone_outlined,
+                            label: 'Téléphone',
+                            value: place.phone!,
+                            fullWidth: true,
+                            onTap: () => _openPhone(place.phone!),
+                          )
+                        else if (hasWhatsapp)
+                          _DetailGridItem(
+                            icon: AppIcons.chat_outlined,
+                            label: 'WhatsApp',
+                            value: place.whatsapp!,
+                            fullWidth: true,
+                            onTap: () => _openWhatsApp(place.whatsapp!),
+                          ),
+                        if (hasWebsite) ...[
+                          const SizedBox(height: 10),
+                          _DetailGridItem(
+                            icon: AppIcons.language_outlined,
+                            label: 'Site web',
+                            value: place.website!,
+                            fullWidth: true,
+                            onTap: () => _openWebsite(place.website!),
                           ),
                         ],
                       ],
                     ),
                   ),
-                  if (place.rating != null) ...[
-                    const Icon(AppIcons.star, color: Colors.amber, size: 28),
-                    const SizedBox(width: 4),
-                    Row(
-                      children: [
-                        Text(
-                          place.rating!.toStringAsFixed(1),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ],
-              ),
 
-              const SizedBox(height: 5),
+                if (openingEntries.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  const _SectionTitle('Horaires'),
+                  _SectionCard(
+                    child: Column(
+                      children: openingEntries
+                          .map(
+                            (e) => _OpeningHourRow(day: e.key, hours: e.value),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ],
 
-              if (place.categories.isNotEmpty) ...[
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: place.categories
-                      .map((name) => Chip(label: Text(name)))
-                      .toList(),
-                ),
-                const SizedBox(height: 5),
-              ],
-
-              const SizedBox(height: 2),
-
-              if (hasLocationSection) ...[
-                const _SectionTitle('Localisation'),
+                if (place.prices.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  const _SectionTitle('Tarifs | Services | Activités'),
+                  _SectionCard(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final itemWidth = (constraints.maxWidth - 10) / 2;
+                        return Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: List.generate(place.prices.length, (index) {
+                            final price = place.prices[index];
+                            final isLast = index == place.prices.length - 1;
+                            final isOdd = place.prices.length.isOdd;
+                            final shouldUseFullWidth = isOdd && isLast;
+                            return SizedBox(
+                              width: shouldUseFullWidth
+                                  ? constraints.maxWidth
+                                  : itemWidth,
+                              child: _DetailGridItem(
+                                icon: AppIcons.sell_outlined,
+                                label: price.label,
+                                value:
+                                    '${price.price ?? '-'} ${price.currency ?? ''}'
+                                        .trim(),
+                                fullWidth: true,
+                              ),
+                            );
+                          }),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                const _SectionTitle('Avis'),
                 _SectionCard(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (hasCity && hasCommune)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _DetailGridItem(
-                                icon: AppIcons.location_city_outlined,
-                                label: 'Ville',
-                                value: place.city!,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _DetailGridItem(
-                                icon: AppIcons.apartment_outlined,
-                                label: 'Commune',
-                                value: place.commune!,
-                              ),
-                            ),
-                          ],
-                        )
-                      else if (hasCity)
-                        _DetailGridItem(
-                          icon: AppIcons.location_city_outlined,
-                          label: 'Ville',
-                          value: place.city!,
-                          fullWidth: true,
-                        )
-                      else if (hasCommune)
-                        _DetailGridItem(
-                          icon: AppIcons.apartment_outlined,
-                          label: 'Commune',
-                          value: place.commune!,
-                          fullWidth: true,
+                      TextField(
+                        controller: _reviewController,
+                        minLines: 3,
+                        maxLines: 5,
+                        maxLength: 1000,
+                        enabled: !isSubmittingReview,
+                        decoration: const InputDecoration(
+                          labelText: 'Votre avis',
+                          hintText:
+                              'Partagez votre expérience (10 à 1000 caractères)',
+                          border: OutlineInputBorder(),
                         ),
-                      if (hasAddress) ...[
-                        const SizedBox(height: 10),
-                        _DetailGridItem(
-                          icon: AppIcons.location_on_outlined,
-                          label: 'Adresse',
-                          value: place.address!,
-                          fullWidth: true,
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: isSubmittingReview ? null : _submitReview,
+                          icon: isSubmittingReview
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(AppIcons.send_outlined),
+                          label: Text(
+                            isSubmittingReview
+                                ? 'Publication...'
+                                : 'Publier un avis',
+                          ),
                         ),
-                      ],
-                      if (hasDistance) ...[
-                        const SizedBox(height: 10),
-                        _DetailGridItem(
-                          icon: AppIcons.social_distance_outlined,
-                          label: 'Distance',
-                          value: '${place.distance} km',
-                          fullWidth: true,
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      if (hasCoordinates)
-                        _MiniPlaceMap(
-                          latitude: place.latitude!,
-                          longitude: place.longitude!,
-                          onTap: () => _openDirections(place),
+                      ),
+                      const SizedBox(height: 14),
+                      if (isReviewsLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else if (reviews.isEmpty)
+                        Text(
+                          'Aucun avis pour le moment.',
+                          style: TextStyle(color: Colors.grey.shade700),
                         )
                       else
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 18,
-                            horizontal: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            'Coordonnées indisponibles',
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-              ],
-
-              const _SectionTitle('Description'),
-              const SizedBox(height: 1),
-              _SectionCard(
-                child: Text(
-                  place.description.isNotEmpty
-                      ? place.description
-                      : 'Aucune description',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[700],
-                    height: 1.5,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              if (hasContactsSection) ...[
-                const SizedBox(height: 18),
-                const _SectionTitle('Contacts'),
-                _SectionCard(
-                  child: Column(
-                    children: [
-                      if (hasPhone && hasWhatsapp)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _DetailGridItem(
-                                icon: AppIcons.phone_outlined,
-                                label: 'Téléphone',
-                                value: place.phone!,
-                                onTap: () => _openPhone(place.phone!),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _DetailGridItem(
-                                icon: AppIcons.chat_outlined,
-                                label: 'WhatsApp',
-                                value: place.whatsapp!,
-                                onTap: () => _openWhatsApp(place.whatsapp!),
-                              ),
-                            ),
-                          ],
-                        )
-                      else if (hasPhone)
-                        _DetailGridItem(
-                          icon: AppIcons.phone_outlined,
-                          label: 'Téléphone',
-                          value: place.phone!,
-                          fullWidth: true,
-                          onTap: () => _openPhone(place.phone!),
-                        )
-                      else if (hasWhatsapp)
-                        _DetailGridItem(
-                          icon: AppIcons.chat_outlined,
-                          label: 'WhatsApp',
-                          value: place.whatsapp!,
-                          fullWidth: true,
-                          onTap: () => _openWhatsApp(place.whatsapp!),
-                        ),
-                      if (hasWebsite) ...[
-                        const SizedBox(height: 10),
-                        _DetailGridItem(
-                          icon: AppIcons.language_outlined,
-                          label: 'Site web',
-                          value: place.website!,
-                          fullWidth: true,
-                          onTap: () => _openWebsite(place.website!),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-
-              if (openingEntries.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                const _SectionTitle('Horaires'),
-                _SectionCard(
-                  child: Column(
-                    children: openingEntries
-                        .map((e) => _OpeningHourRow(day: e.key, hours: e.value))
-                        .toList(),
-                  ),
-                ),
-              ],
-
-              if (place.prices.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                const _SectionTitle('Tarifs | Services | Activités'),
-                _SectionCard(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final itemWidth = (constraints.maxWidth - 10) / 2;
-                      return Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: List.generate(place.prices.length, (index) {
-                          final price = place.prices[index];
-                          final isLast = index == place.prices.length - 1;
-                          final isOdd = place.prices.length.isOdd;
-                          final shouldUseFullWidth = isOdd && isLast;
-                          return SizedBox(
-                            width: shouldUseFullWidth
-                                ? constraints.maxWidth
-                                : itemWidth,
-                            child: _DetailGridItem(
-                              icon: AppIcons.sell_outlined,
-                              label: price.label,
-                              value:
-                                  '${price.price ?? '-'} ${price.currency ?? ''}'
-                                      .trim(),
-                              fullWidth: true,
-                            ),
-                          );
-                        }),
-                      );
-                    },
-                  ),
-                ),
-              ],
-              const _SectionTitle('Avis'),
-              _SectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: _reviewController,
-                      minLines: 3,
-                      maxLines: 5,
-                      maxLength: 1000,
-                      enabled: !isSubmittingReview,
-                      decoration: const InputDecoration(
-                        labelText: 'Votre avis',
-                        hintText:
-                            'Partagez votre expérience (10 à 1000 caractères)',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: isSubmittingReview ? null : _submitReview,
-                        icon: isSubmittingReview
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                        Column(
+                          children: visibleReviews
+                              .map(
+                                (review) => _ReviewTile(
+                                  review: review,
+                                  formattedDate: _formatReviewDate(
+                                    review.createdAt,
+                                  ),
                                 ),
                               )
-                            : const Icon(AppIcons.send_outlined),
-                        label: Text(
-                          isSubmittingReview
-                              ? 'Publication...'
-                              : 'Publier un avis',
+                              .toList(),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    if (isReviewsLoading)
-                      const Center(child: CircularProgressIndicator())
-                    else if (reviews.isEmpty)
-                      Text(
-                        'Aucun avis pour le moment.',
-                        style: TextStyle(color: Colors.grey.shade700),
-                      )
-                    else
-                      Column(
-                        children: visibleReviews
-                            .map(
-                              (review) => _ReviewTile(
-                                review: review,
-                                formattedDate: _formatReviewDate(
-                                  review.createdAt,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    if (!isReviewsLoading && reviews.length > 5)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _showAllReviews = !_showAllReviews;
-                            });
-                          },
-                          child: Text(
-                            _showAllReviews
-                                ? 'Voir moins'
-                                : 'Voir tout (${reviews.length})',
+                      if (!isReviewsLoading && reviews.length > 5)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _showAllReviews = !_showAllReviews;
+                              });
+                            },
+                            child: Text(
+                              _showAllReviews
+                                  ? 'Voir moins'
+                                  : 'Voir tout (${reviews.length})',
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 32),
+                const SizedBox(height: 32),
 
-              // Bouton d'action
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _openDirections(place),
-                  icon: const Icon(AppIcons.directions),
-                  label: const Text('Obtenir l\'itinéraire'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                // Bouton d'action
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _openDirections(place),
+                    icon: const Icon(AppIcons.directions),
+                    label: const Text('Obtenir l\'itinéraire'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );

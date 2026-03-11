@@ -8,6 +8,8 @@ import '../../presentation/screens/register/register_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/immersive/visit_360_screen.dart';
 import '../../presentation/screens/nearby/nearby_places_screen.dart';
+import '../../presentation/screens/favorites/favorites_screen.dart';
+import '../../presentation/screens/history/history_screen.dart';
 import '../../presentation/screens/place_details/place_details_screen.dart';
 import '../../presentation/screens/sections/section_details_screen.dart';
 import '../../presentation/screens/sections/sections_screen.dart';
@@ -74,6 +76,14 @@ class AppRouter {
         _animatedRoute(
           path: '/nearby',
           builder: (context, state) => const NearbyPlacesScreen(),
+        ),
+        _animatedRoute(
+          path: '/favorites',
+          builder: (context, state) => const FavoritesScreen(),
+        ),
+        _animatedRoute(
+          path: '/history',
+          builder: (context, state) => const HistoryScreen(),
         ),
         _animatedRoute(
           path: '/sections',

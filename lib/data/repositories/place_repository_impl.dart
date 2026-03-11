@@ -98,6 +98,35 @@ class PlaceRepositoryImpl {
     return result.places;
   }
 
+  Future<List<PlaceEntity>> getFavoritePlaces() async {
+    try {
+      final response = await _dioService.get(ApiConstants.favorites);
+      final payload = _asMap(response.data);
+      final data = _extractPlaces(payload);
+      return data.map((json) => PlaceModel.fromJson(json)).toList();
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération des favoris: $e');
+    }
+  }
+
+  Future<List<PlaceEntity>> getVisitedPlaces({int perPage = 20}) async {
+    try {
+      final response = await _dioService.get(
+        ApiConstants.visits,
+        queryParameters: {'per_page': perPage},
+      );
+      final payload = _asMap(response.data);
+      final data = _extractPlaces(payload);
+      return data.map((json) => PlaceModel.fromJson(json)).toList();
+    } on DioException {
+      rethrow;
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération de l\'historique: $e');
+    }
+  }
+
   Future<List<PlaceReviewEntity>> getPlaceReviews(String placeId) async {
     try {
       final response = await _dioService.get(
@@ -109,9 +138,8 @@ class PlaceRepositoryImpl {
       final reviews = rawList
           .whereType<Map>()
           .map(
-            (item) => PlaceReviewModel.fromJson(
-              Map<String, dynamic>.from(item),
-            ),
+            (item) =>
+                PlaceReviewModel.fromJson(Map<String, dynamic>.from(item)),
           )
           .toList();
 

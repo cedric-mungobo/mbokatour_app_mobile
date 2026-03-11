@@ -23,6 +23,7 @@ class ApiConstants {
       '$apiPrefix/places/$placeId/reviews';
   static String get reviews => '$apiPrefix/reviews';
   static String get favorites => '$apiPrefix/favorites';
+  static String get visits => '$apiPrefix/visits';
   static String get sections => '$apiPrefix/sections';
   static String sectionBySlug(String slug) => '$sections/$slug';
 

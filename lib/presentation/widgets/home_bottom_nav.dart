@@ -68,7 +68,7 @@ class HomeBottomNav extends StatelessWidget {
                     Expanded(
                       child: _NavIconButton(
                         key: boredButtonKey,
-                        icon: AppIcons.send_outlined,
+                        icon: AppIcons.sentiment_satisfied_alt_outlined,
                         onTap: onExploreTap,
                       ),
                     ),
@@ -160,6 +160,7 @@ class _HomeSearchSheetState extends State<HomeSearchSheet> {
               child: TextField(
                 controller: widget.controller,
                 focusNode: _focusNode,
+                cursorColor: Colors.white70,
                 textInputAction: TextInputAction.search,
                 onChanged: widget.onChanged,
                 onSubmitted: widget.onSubmit,
@@ -176,21 +177,32 @@ class _HomeSearchSheetState extends State<HomeSearchSheet> {
                     fontWeight: FontWeight.w400,
                   ),
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
             ),
-            if (widget.controller.text.isNotEmpty)
-              IconButton(
-                tooltip: 'Effacer',
-                onPressed: () {
-                  widget.controller.clear();
-                  widget.onChanged('');
-                  setState(() {});
-                },
-                icon: const Icon(Icons.close_rounded, color: Colors.white38),
-              ),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: widget.controller,
+              builder: (context, value, _) {
+                if (value.text.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return IconButton(
+                  tooltip: 'Effacer',
+                  onPressed: () {
+                    widget.controller.clear();
+                    widget.onChanged('');
+                  },
+                  icon: const Icon(Icons.close_rounded, color: Colors.white38),
+                );
+              },
+            ),
           ],
         ),
       ),

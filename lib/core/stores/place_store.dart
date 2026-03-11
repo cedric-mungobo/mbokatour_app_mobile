@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:dio/dio.dart';
@@ -20,11 +19,15 @@ class PlaceStore {
 
   final places = signal<List<PlaceEntity>>([]);
   final nearbyPlaces = signal<List<PlaceEntity>>([]);
+  final favoritePlaces = signal<List<PlaceEntity>>([]);
+  final visitedPlaces = signal<List<PlaceEntity>>([]);
   final selectedPlace = signal<PlaceEntity?>(null);
   final isPlacesLoading = signal(false);
   final isNearbyPlacesLoading = signal(false);
   final isPlacesLoadingMore = signal(false);
   final isPlaceLoading = signal(false);
+  final isFavoritePlacesLoading = signal(false);
+  final isVisitedPlacesLoading = signal(false);
   final placeReviews = signal<List<PlaceReviewEntity>>([]);
   final isPlaceReviewsLoading = signal(false);
   final isSubmittingPlaceReview = signal(false);
@@ -68,6 +71,7 @@ class PlaceStore {
     final cacheService = CacheService(prefs);
     final dioService = DioService(cacheService);
     _repository = PlaceRepositoryImpl(dioService: dioService);
+    _refreshFavoritePlacesFromLoadedLists();
   }
 
   Future<void> loadPlaces({
@@ -117,6 +121,7 @@ class PlaceStore {
         _lastPlacesCategory = normalizedCategory;
         _lastPlacesFetchedAt = DateTime.now();
         await _savePlacesToDiskCache(result.places);
+        _refreshFavoritePlacesFromLoadedLists();
       } catch (e) {
         final hasNetworkIssue = _isNetworkIssue(e);
         isOffline.value = hasNetworkIssue;
@@ -183,6 +188,7 @@ class PlaceStore {
         _currentPlacesPage = result.currentPage;
         _lastPlacesPage = result.lastPage;
         hasMorePlaces.value = result.hasMore;
+        _refreshFavoritePlacesFromLoadedLists();
       } catch (e) {
         isOffline.value = _isNetworkIssue(e);
         errorMessage.value = _buildLoadPlacesErrorMessage(e);
@@ -220,6 +226,7 @@ class PlaceStore {
       );
       isOffline.value = false;
       nearbyPlaces.value = result;
+      _refreshFavoritePlacesFromLoadedLists();
     } catch (e) {
       isOffline.value = _isNetworkIssue(e);
       nearbyPlaces.value = [];
@@ -346,9 +353,7 @@ class PlaceStore {
       final current = await repository.togglePlaceLike(normalizedId);
       isPlaceLiked.value = current;
       if (previous != current) {
-        _updateSelectedPlaceStats(
-          likesDelta: current ? 1 : -1,
-        );
+        _updateSelectedPlaceStats(likesDelta: current ? 1 : -1);
       }
       isOffline.value = false;
       return true;
@@ -375,10 +380,9 @@ class PlaceStore {
       final previous = isPlaceFavorited.value;
       final current = await repository.togglePlaceFavorite(normalizedId);
       isPlaceFavorited.value = current;
+      await _setPlaceFavoriteLocally(normalizedId, current);
       if (previous != current) {
-        _updateSelectedPlaceStats(
-          favoritesDelta: current ? 1 : -1,
-        );
+        _updateSelectedPlaceStats(favoritesDelta: current ? 1 : -1);
       }
       isOffline.value = false;
       return true;
@@ -583,6 +587,7 @@ class PlaceStore {
       }
       if (restored.isEmpty) return false;
       places.value = restored;
+      _refreshFavoritePlacesFromLoadedLists();
       return true;
     } catch (_) {
       return false;
@@ -619,10 +624,120 @@ class PlaceStore {
   String _placeDetailCacheKey(String placeId) =>
       '${StorageConstants.placeDetailCachePrefix}$placeId';
 
-  void _updateSelectedPlaceStats({
-    int likesDelta = 0,
-    int favoritesDelta = 0,
-  }) {
+  Future<void> loadFavoritePlaces() async {
+    if (_repository == null) await init();
+    final repository = _repository;
+    if (repository == null) return;
+
+    isFavoritePlacesLoading.value = true;
+    errorMessage.value = null;
+    try {
+      final favorites = await repository.getFavoritePlaces();
+      favoritePlaces.value = favorites;
+      final ids = favorites.map((place) => place.id).toList(growable: false);
+      final prefs = _prefs;
+      if (prefs != null) {
+        await prefs.setStringList(StorageConstants.favoritePlaceIds, ids);
+      }
+      for (final place in favorites) {
+        _placeByIdCache[place.id] = place;
+        _placeByIdFetchedAt[place.id] = DateTime.now();
+      }
+      isOffline.value = false;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        favoritePlaces.value = const [];
+        errorMessage.value = 'Connectez-vous pour voir vos favoris.';
+        return;
+      }
+      final ids = _readFavoritePlaceIds();
+      if (ids.isEmpty) {
+        favoritePlaces.value = const [];
+      } else {
+        _refreshFavoritePlacesFromLoadedLists(idsOverride: ids);
+      }
+      isOffline.value = _isNetworkIssue(e);
+      if (!_isNetworkIssue(e)) {
+        errorMessage.value = 'Impossible de charger les favoris.';
+      }
+    } finally {
+      isFavoritePlacesLoading.value = false;
+    }
+  }
+
+  Future<void> loadVisitedPlaces({int perPage = 20}) async {
+    if (_repository == null) await init();
+    final repository = _repository;
+    if (repository == null) return;
+
+    isVisitedPlacesLoading.value = true;
+    errorMessage.value = null;
+    try {
+      final visits = await repository.getVisitedPlaces(perPage: perPage);
+      visitedPlaces.value = visits;
+      for (final place in visits) {
+        _placeByIdCache[place.id] = place;
+        _placeByIdFetchedAt[place.id] = DateTime.now();
+      }
+      isOffline.value = false;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        visitedPlaces.value = const [];
+        errorMessage.value = 'Connectez-vous pour voir votre historique.';
+      } else {
+        visitedPlaces.value = const [];
+        isOffline.value = _isNetworkIssue(e);
+        if (!_isNetworkIssue(e)) {
+          errorMessage.value = 'Impossible de charger l\'historique.';
+        }
+      }
+    } finally {
+      isVisitedPlacesLoading.value = false;
+    }
+  }
+
+  List<String> _readFavoritePlaceIds() {
+    final prefs = _prefs;
+    if (prefs == null) return const [];
+    final raw = prefs.getStringList(StorageConstants.favoritePlaceIds);
+    if (raw == null || raw.isEmpty) return const [];
+    return raw.where((id) => id.trim().isNotEmpty).toList(growable: false);
+  }
+
+  Future<void> _setPlaceFavoriteLocally(String placeId, bool isFavorite) async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    final updated = _readFavoritePlaceIds().toSet();
+    if (isFavorite) {
+      updated.add(placeId);
+    } else {
+      updated.remove(placeId);
+    }
+    await prefs.setStringList(
+      StorageConstants.favoritePlaceIds,
+      updated.toList(growable: false),
+    );
+    _refreshFavoritePlacesFromLoadedLists(idsOverride: updated.toList());
+  }
+
+  void _refreshFavoritePlacesFromLoadedLists({List<String>? idsOverride}) {
+    final ids = idsOverride ?? _readFavoritePlaceIds();
+    if (ids.isEmpty) {
+      favoritePlaces.value = const [];
+      return;
+    }
+    final loaded = <String, PlaceEntity>{
+      for (final place in places.value) place.id: place,
+      for (final place in nearbyPlaces.value) place.id: place,
+      for (final entry in _placeByIdCache.entries) entry.key: entry.value,
+    };
+    favoritePlaces.value = ids
+        .map((id) => loaded[id])
+        .whereType<PlaceEntity>()
+        .toList(growable: false);
+  }
+
+  void _updateSelectedPlaceStats({int likesDelta = 0, int favoritesDelta = 0}) {
     final current = selectedPlace.value;
     if (current == null) return;
 

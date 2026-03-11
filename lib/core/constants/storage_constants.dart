@@ -13,4 +13,5 @@ class StorageConstants {
   static const String placesListCache = 'places_list_cache_v1';
   static const String placesListCachedAt = 'places_list_cached_at_v1';
   static const String placeDetailCachePrefix = 'place_detail_cache_v1_';
+  static const String favoritePlaceIds = 'favorite_place_ids_v1';
 }

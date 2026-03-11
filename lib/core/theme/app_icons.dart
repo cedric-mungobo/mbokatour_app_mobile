@@ -31,6 +31,7 @@ class AppIcons {
   static const IconData image_outlined = Iconsax.gallery;
   static const IconData info_outline = Iconsax.info_circle;
   static const IconData language_outlined = Iconsax.language_circle;
+  static const IconData like = Iconsax.like;
   static const IconData location_city_outlined = Iconsax.buildings;
   static const IconData location_on = Iconsax.location;
   static const IconData location_on_outlined = Iconsax.location;
