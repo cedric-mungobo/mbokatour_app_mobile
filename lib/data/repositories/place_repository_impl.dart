@@ -62,6 +62,8 @@ class PlaceRepositoryImpl {
         currentPage: meta.currentPage,
         lastPage: meta.lastPage,
       );
+    } on DioException {
+      rethrow;
     } catch (e) {
       throw Exception('Erreur lors de la récupération des lieux: $e');
     }
@@ -84,6 +86,8 @@ class PlaceRepositoryImpl {
         );
       }
       return place;
+    } on DioException {
+      rethrow;
     } catch (e) {
       throw Exception('Erreur lors de la récupération du lieu: $e');
     }
@@ -242,6 +246,8 @@ class PlaceRepositoryImpl {
       final payload = _asMap(fallbackResponse.data);
       final data = _extractPlaces(payload);
       return data.map((json) => PlaceModel.fromJson(json)).toList();
+    } on DioException {
+      rethrow;
     } catch (e) {
       throw Exception('Erreur lors de la récupération des lieux proches: $e');
     }

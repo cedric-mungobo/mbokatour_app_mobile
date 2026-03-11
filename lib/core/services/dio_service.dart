@@ -31,6 +31,11 @@ class DioService {
             options.headers['Authorization'] = 'Bearer $token';
           }
 
+          if (ApiConstants.apiKey.isNotEmpty) {
+            options.headers[ApiConstants.apiKeyHeader] = ApiConstants.apiKey;
+            options.queryParameters.putIfAbsent('api_key', () => ApiConstants.apiKey);
+          }
+
           if (kDebugMode) {
             debugPrint(
               'REQUEST[${options.method}] => PATH: ${options.baseUrl}${options.path}',

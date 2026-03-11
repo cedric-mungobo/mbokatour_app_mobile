@@ -1,8 +1,10 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 import 'package:dio/dio.dart';
+import '../../core/constants/api_constants.dart';
 import '../../core/constants/storage_constants.dart';
 import '../services/cache_service.dart';
 import '../services/dio_service.dart';
@@ -448,6 +450,19 @@ class PlaceStore {
   }
 
   String _buildLoadPlacesErrorMessage(Object error) {
+    if (ApiConstants.apiKey.isEmpty) {
+      return 'Clé API absente dans la configuration de l’app. Lancez Flutter avec --dart-define-from-file=.env ou --dart-define=API_KEY=...';
+    }
+    if (error is DioException && error.response?.statusCode == 401) {
+      final data = error.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message']?.toString().trim();
+        if (message != null && message.isNotEmpty) {
+          return message;
+        }
+      }
+      return 'Accès refusé par l’API. Vérifiez la clé API envoyée par l’application.';
+    }
     final lower = error.toString().toLowerCase();
     if (lower.contains('timeout')) {
       return 'Le serveur met trop de temps à répondre. Vérifiez votre connexion puis réessayez.';

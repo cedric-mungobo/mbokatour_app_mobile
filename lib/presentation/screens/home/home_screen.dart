@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:mbokatour_app_mobile/core/theme/app_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
@@ -18,9 +17,9 @@ import '../../../core/stores/place_store.dart';
 import '../../../domain/entities/place_entity.dart';
 import '../../../domain/entities/category_entity.dart';
 import '../../../data/repositories/category_repository_impl.dart';
-import '../../widgets/app_logo_widget.dart';
 import '../../widgets/bored_bottom_sheet.dart';
 import '../../widgets/category_filter_chips_bar.dart';
+import '../../widgets/home_bottom_nav.dart';
 import '../../widgets/place_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -121,8 +120,33 @@ class _HomeScreenState extends State<HomeScreen> {
     context.go('/profile');
   }
 
-  void _openContribute() {
-    context.go('/contribute');
+  void _openSections() {
+    context.go('/sections');
+  }
+
+  Future<void> _openSearchSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final viewInsets = MediaQuery.of(sheetContext).viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + viewInsets),
+          child: HomeSearchSheet(
+            controller: _searchController,
+            searchFieldKey: _searchFieldKey,
+            onChanged: (widgetValue) {
+              _onSearchChanged(widgetValue);
+            },
+            onSubmit: (value) {
+              _onSearchChanged(value);
+              Navigator.of(sheetContext).pop();
+            },
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _maybeStartHomeGuide() async {
@@ -143,7 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
             _profileButtonKey.currentContext != null;
 
         final hasPlaceCardTarget =
-            _store.places.value.isEmpty || _firstPlaceCardKey.currentContext != null;
+            _store.places.value.isEmpty ||
+            _firstPlaceCardKey.currentContext != null;
 
         if (hasRequiredTargets && hasPlaceCardTarget) {
           break;
@@ -183,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
         key: _searchFieldKey,
         title: 'Rechercher un lieu',
         description:
-            'Appuyez sur cette barre, puis saisissez le nom d’un lieu pour le trouver rapidement.',
+            'Appuyez sur cette action de recherche, puis saisissez le nom d’un lieu pour le trouver rapidement.',
         align: ContentAlign.top,
       ),
       _target(
@@ -260,10 +285,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
     final topInset = MediaQuery.of(context).padding.top;
     const topFiltersHeight = 42.0;
     const gridTopSpacing = 8.0;
+    const bottomDockHeight = 96.0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -273,6 +298,20 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Scaffold(
         backgroundColor: AppTheme.brandBlack,
+        bottomNavigationBar:
+            HomeBottomNav(
+                  onHomeTap: () {},
+                  onExploreTap: _openBoredSheet,
+                  onContributeTap: _openSearchSheet,
+                  onSavedTap: _openSections,
+                  onProfileTap: _openProfile,
+                  boredButtonKey: _boredButtonKey,
+                  contributeButtonKey: _contributeButtonKey,
+                  profileButtonKey: _profileButtonKey,
+                )
+                .animate()
+                .fadeIn(delay: 220.ms, duration: 300.ms)
+                .slideY(begin: 0.08, end: 0, curve: Curves.easeOutCubic),
         body: Watch((context) {
           final isLoading = _store.isPlacesLoading.value;
           final isLoadingMore = _store.isPlacesLoadingMore.value;
@@ -306,7 +345,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: EdgeInsets.only(
                           top: topInset + topFiltersHeight + gridTopSpacing,
-                          bottom: 0,
+                          bottom: bottomDockHeight,
                         ),
                         children: [
                           if (showInitialLoader)
@@ -341,21 +380,31 @@ class _HomeScreenState extends State<HomeScreen> {
                               itemCount: places.length,
                               itemBuilder: (context, index) {
                                 final place = places[index];
-                                final card = PlaceCard(
-                                  place: place,
-                                  aspectRatio: _resolveAspectRatio(place),
-                                  isMuted: isMuted,
-                                  onTap: () =>
-                                      context.push('/place/${place.id}'),
-                                ).animate(
-                                  delay: (50 + (index % 10) * 30).ms,
-                                ).fadeIn(duration: 260.ms).slideY(
-                                  begin: 0.04,
-                                  end: 0,
-                                  curve: Curves.easeOutCubic,
-                                );
+                                final card =
+                                    PlaceCard(
+                                          place: place,
+                                          aspectRatio: _resolveAspectRatio(
+                                            place,
+                                          ),
+                                          isMuted: isMuted,
+                                          onTap: () => context.push(
+                                            '/place/${place.id}',
+                                          ),
+                                        )
+                                        .animate(
+                                          delay: (50 + (index % 10) * 30).ms,
+                                        )
+                                        .fadeIn(duration: 260.ms)
+                                        .slideY(
+                                          begin: 0.04,
+                                          end: 0,
+                                          curve: Curves.easeOutCubic,
+                                        );
                                 if (index == 0) {
-                                  return Container(key: _firstPlaceCardKey, child: card);
+                                  return Container(
+                                    key: _firstPlaceCardKey,
+                                    child: card,
+                                  );
                                 }
                                 return card;
                               },
@@ -379,46 +428,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   left: 10,
                   right: 10,
                   top: topInset + 6,
-                  child: SizedBox(
-                    key: _categoryFilterKey,
-                    height: topFiltersHeight,
-                    child: CategoryFilterChipsBar(
-                      categories: _categories,
-                      selectedSlug: _selectedCategorySlug,
-                      darkMode: true,
-                      allLabel: 'Decouverte',
-                      onSelected: (category) {
-                        final nextSlug = category?.slug;
-                        if (_selectedCategorySlug == nextSlug) return;
-                        setState(() => _selectedCategorySlug = nextSlug);
-                        _loadPlaces(forceRefresh: true);
-                      },
-                    ),
-                  ).animate().fadeIn(delay: 140.ms, duration: 280.ms).slideY(
-                    begin: -0.04,
-                    end: 0,
-                    curve: Curves.easeOutCubic,
-                  ),
-                ),
-                Positioned(
-                  left: 24,
-                  right: 24,
-                  bottom: 16 + bottomInset,
-                  child: _BottomSearchBar(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    onBoredTap: _openBoredSheet,
-                    onContributeTap: _openContribute,
-                    onProfileTap: _openProfile,
-                    searchFieldKey: _searchFieldKey,
-                    boredButtonKey: _boredButtonKey,
-                    contributeButtonKey: _contributeButtonKey,
-                    profileButtonKey: _profileButtonKey,
-                  ).animate().fadeIn(delay: 220.ms, duration: 300.ms).slideY(
-                    begin: 0.08,
-                    end: 0,
-                    curve: Curves.easeOutCubic,
-                  ),
+                  child:
+                      SizedBox(
+                            key: _categoryFilterKey,
+                            height: topFiltersHeight,
+                            child: CategoryFilterChipsBar(
+                              categories: _categories,
+                              selectedSlug: _selectedCategorySlug,
+                              darkMode: true,
+                              allLabel: 'Decouverte',
+                              onSelected: (category) {
+                                final nextSlug = category?.slug;
+                                if (_selectedCategorySlug == nextSlug) return;
+                                setState(
+                                  () => _selectedCategorySlug = nextSlug,
+                                );
+                                _loadPlaces(forceRefresh: true);
+                              },
+                            ),
+                          )
+                          .animate()
+                          .fadeIn(delay: 140.ms, duration: 280.ms)
+                          .slideY(
+                            begin: -0.04,
+                            end: 0,
+                            curve: Curves.easeOutCubic,
+                          ),
                 ),
               ],
             ),
@@ -451,147 +486,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final height = double.tryParse(match.group(2)!);
     if (width == null || height == null || height == 0) return null;
     return width / height;
-  }
-}
-
-class _BottomSearchBar extends StatefulWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onBoredTap;
-  final VoidCallback onContributeTap;
-  final VoidCallback onProfileTap;
-  final GlobalKey searchFieldKey;
-  final GlobalKey boredButtonKey;
-  final GlobalKey contributeButtonKey;
-  final GlobalKey profileButtonKey;
-
-  const _BottomSearchBar({
-    required this.controller,
-    required this.onChanged,
-    required this.onBoredTap,
-    required this.onContributeTap,
-    required this.onProfileTap,
-    required this.searchFieldKey,
-    required this.boredButtonKey,
-    required this.contributeButtonKey,
-    required this.profileButtonKey,
-  });
-
-  @override
-  State<_BottomSearchBar> createState() => _BottomSearchBarState();
-}
-
-class _BottomSearchBarState extends State<_BottomSearchBar> {
-  late final FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode = FocusNode();
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 52, maxHeight: 56),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.98),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Row(
-          children: [
-            const AppLogoWidget(size: 50),
-            const SizedBox(width: 8),
-            const Icon(AppIcons.search, color: Colors.black45, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Container(
-                key: widget.searchFieldKey,
-                child: TextField(
-                  controller: widget.controller,
-                  focusNode: _focusNode,
-                  textInputAction: TextInputAction.search,
-                  onChanged: widget.onChanged,
-                  onSubmitted: widget.onChanged,
-                  style: const TextStyle(
-                    color: Colors.black87,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  decoration: const InputDecoration(
-                    hintText: 'Search locations...',
-                    hintStyle: TextStyle(
-                      color: Colors.black38,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 32,
-              height: 32,
-              child: IconButton(
-                key: widget.boredButtonKey,
-                tooltip: 'Je m\'ennuie',
-                padding: EdgeInsets.zero,
-                onPressed: widget.onBoredTap,
-                icon: const Icon(
-                  AppIcons.sentiment_satisfied_alt_outlined,
-                  size: 18,
-                  color: Colors.black54,
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 32,
-              height: 32,
-              child: IconButton(
-                key: widget.contributeButtonKey,
-                tooltip: 'Contribuer',
-                padding: EdgeInsets.zero,
-                onPressed: widget.onContributeTap,
-                icon: const Icon(
-                  AppIcons.add_circle_outline_rounded,
-                  size: 18,
-                  color: Colors.black54,
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 32,
-              height: 32,
-              child: IconButton(
-                key: widget.profileButtonKey,
-                tooltip: 'Profil',
-                padding: EdgeInsets.zero,
-                onPressed: widget.onProfileTap,
-                icon: const Icon(
-                  AppIcons.person_outline_rounded,
-                  size: 18,
-                  color: Colors.black38,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
