@@ -17,9 +17,10 @@ import '../../../core/stores/place_store.dart';
 import '../../../domain/entities/place_entity.dart';
 import '../../../domain/entities/category_entity.dart';
 import '../../../data/repositories/category_repository_impl.dart';
+import '../../widgets/app_logo_widget.dart';
 import '../../widgets/bored_bottom_sheet.dart';
-import '../../widgets/category_filter_chips_bar.dart';
 import '../../widgets/home_bottom_nav.dart';
+import '../../widgets/home_top_chrome.dart';
 import '../../widgets/place_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -30,6 +31,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _searchController = TextEditingController();
   Timer? _searchDebounce;
   final _store = PlaceStore.instance;
@@ -120,8 +122,20 @@ class _HomeScreenState extends State<HomeScreen> {
     context.go('/profile');
   }
 
+  void _openContribute() {
+    context.go('/contribute');
+  }
+
   void _openSections() {
     context.go('/sections');
+  }
+
+  void _openPreferences() {
+    context.go('/preferences');
+  }
+
+  void _openDrawer() {
+    _scaffoldKey.currentState?.openEndDrawer();
   }
 
   Future<void> _openSearchSheet() async {
@@ -242,9 +256,9 @@ class _HomeScreenState extends State<HomeScreen> {
     targets.add(
       _target(
         key: _profileButtonKey,
-        title: 'Profil',
+        title: 'Menu',
         description:
-            'Appuyez ici pour accéder à votre profil et gérer votre compte.',
+            'Appuyez ici pour ouvrir le menu et accéder au profil, aux préférences et aux autres sections.',
         align: ContentAlign.top,
         isLast: true,
       ),
@@ -285,10 +299,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final topInset = MediaQuery.of(context).padding.top;
-    const topFiltersHeight = 42.0;
-    const gridTopSpacing = 8.0;
     const bottomDockHeight = 96.0;
+    const fixedHeaderHeight = 76.0;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -297,7 +309,14 @@ class _HomeScreenState extends State<HomeScreen> {
         statusBarBrightness: Brightness.dark,
       ),
       child: Scaffold(
+        key: _scaffoldKey,
         backgroundColor: AppTheme.brandBlack,
+        endDrawer: _HomeMenuDrawer(
+          onProfileTap: _openProfile,
+          onSectionsTap: _openSections,
+          onContributeTap: _openContribute,
+          onPreferencesTap: _openPreferences,
+        ),
         bottomNavigationBar:
             HomeBottomNav(
                   onHomeTap: () {},
@@ -320,64 +339,61 @@ class _HomeScreenState extends State<HomeScreen> {
           final isOffline = _store.isOffline.value;
           final showInitialLoader = _isBootstrapping || isLoading;
 
-          return MediaQuery.removePadding(
-            context: context,
-            removeTop: true,
+          return SafeArea(
+            bottom: false,
             child: Stack(
               children: [
-                Positioned.fill(
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (notification) {
-                      if (notification.metrics.extentAfter < 600 &&
-                          _store.hasMorePlaces.value &&
-                          !isLoading &&
-                          !isLoadingMore) {
-                        _store.loadMorePlaces(
-                          query: _searchController.text,
-                          categorySlug: _selectedCategorySlug,
-                        );
-                      }
-                      return false;
-                    },
-                    child: RefreshIndicator(
-                      onRefresh: () => _loadPlaces(forceRefresh: true),
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: EdgeInsets.only(
-                          top: topInset + topFiltersHeight + gridTopSpacing,
-                          bottom: bottomDockHeight,
+                NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    if (notification.metrics.extentAfter < 600 &&
+                        _store.hasMorePlaces.value &&
+                        !isLoading &&
+                        !isLoadingMore) {
+                      _store.loadMorePlaces(
+                        query: _searchController.text,
+                        categorySlug: _selectedCategorySlug,
+                      );
+                    }
+                    return false;
+                  },
+                  child: RefreshIndicator(
+                    onRefresh: () => _loadPlaces(forceRefresh: true),
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: const SizedBox(height: fixedHeaderHeight),
                         ),
-                        children: [
-                          if (showInitialLoader)
-                            const SizedBox(
-                              height: 380,
-                              child: Center(child: CircularProgressIndicator()),
-                            )
-                          else if (places.isEmpty)
-                            SizedBox(
-                              height: 380,
-                              child: Center(
-                                child: Text(
-                                  isOffline
-                                      ? 'Aucune connexion et aucun lieu en cache'
-                                      : _selectedCategorySlug != null
-                                      ? 'Aucun lieu pour ce filtre'
-                                      : 'Aucun lieu trouvé',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
+                        if (showInitialLoader)
+                          const SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (places.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Text(
+                                isOffline
+                                    ? 'Aucune connexion et aucun lieu en cache'
+                                    : _selectedCategorySlug != null
+                                    ? 'Aucun lieu pour ce filtre'
+                                    : 'Aucun lieu trouvé',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
                                 ),
                               ),
-                            )
-                          else
-                            MasonryGridView.count(
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            sliver: SliverMasonryGrid.count(
                               crossAxisCount: 2,
                               mainAxisSpacing: 0,
                               crossAxisSpacing: 0,
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: places.length,
+                              childCount: places.length,
                               itemBuilder: (context, index) {
                                 final place = places[index];
                                 final card =
@@ -409,51 +425,48 @@ class _HomeScreenState extends State<HomeScreen> {
                                 return card;
                               },
                             ),
-                          if (isLoadingMore)
-                            const Padding(
+                          ),
+                        if (isLoadingMore)
+                          const SliverToBoxAdapter(
+                            child: Padding(
                               padding: EdgeInsets.symmetric(vertical: 16),
                               child: Center(child: CircularProgressIndicator()),
                             ),
-                          if (!showInitialLoader &&
-                              !isLoadingMore &&
-                              places.isNotEmpty &&
-                              !_store.hasMorePlaces.value)
-                            const SizedBox(height: 24),
-                        ],
-                      ),
+                          ),
+                        SliverToBoxAdapter(
+                          child: SizedBox(
+                            height:
+                                (!showInitialLoader &&
+                                    !isLoadingMore &&
+                                    places.isNotEmpty &&
+                                    !_store.hasMorePlaces.value)
+                                ? bottomDockHeight + 24
+                                : bottomDockHeight,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 Positioned(
-                  left: 10,
-                  right: 10,
-                  top: topInset + 6,
-                  child:
-                      SizedBox(
-                            key: _categoryFilterKey,
-                            height: topFiltersHeight,
-                            child: CategoryFilterChipsBar(
-                              categories: _categories,
-                              selectedSlug: _selectedCategorySlug,
-                              darkMode: true,
-                              allLabel: 'Decouverte',
-                              onSelected: (category) {
-                                final nextSlug = category?.slug;
-                                if (_selectedCategorySlug == nextSlug) return;
-                                setState(
-                                  () => _selectedCategorySlug = nextSlug,
-                                );
-                                _loadPlaces(forceRefresh: true);
-                              },
-                            ),
-                          )
-                          .animate()
-                          .fadeIn(delay: 140.ms, duration: 280.ms)
-                          .slideY(
-                            begin: -0.04,
-                            end: 0,
-                            curve: Curves.easeOutCubic,
-                          ),
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: HomeTopHeader(
+                    categoryFilterKey: _categoryFilterKey,
+                    categories: _categories,
+                    selectedCategorySlug: _selectedCategorySlug,
+                    contributeButtonKey: _contributeButtonKey,
+                    profileButtonKey: _profileButtonKey,
+                    onContributeTap: _openContribute,
+                    onDrawerTap: _openDrawer,
+                    onCategorySelected: (category) {
+                      final nextSlug = category?.slug;
+                      if (_selectedCategorySlug == nextSlug) return;
+                      setState(() => _selectedCategorySlug = nextSlug);
+                      _loadPlaces(forceRefresh: true);
+                    },
+                  ),
                 ),
               ],
             ),
@@ -556,6 +569,113 @@ class _GuideCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _HomeMenuDrawer extends StatelessWidget {
+  final VoidCallback onProfileTap;
+  final VoidCallback onSectionsTap;
+  final VoidCallback onContributeTap;
+  final VoidCallback onPreferencesTap;
+
+  const _HomeMenuDrawer({
+    required this.onProfileTap,
+    required this.onSectionsTap,
+    required this.onContributeTap,
+    required this.onPreferencesTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      backgroundColor: const Color(0xFF0F0F0F),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Row(
+                children: [
+                  AppLogoWidget(size: 30),
+                  SizedBox(width: 12),
+                  Text(
+                    'MbokaTour',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(color: Color(0x22FFFFFF), height: 24),
+            _DrawerAction(
+              icon: Icons.person_outline_rounded,
+              label: 'Profil',
+              onTap: () {
+                Navigator.of(context).pop();
+                onProfileTap();
+              },
+            ),
+            _DrawerAction(
+              icon: Icons.grid_view_rounded,
+              label: 'Sections',
+              onTap: () {
+                Navigator.of(context).pop();
+                onSectionsTap();
+              },
+            ),
+            _DrawerAction(
+              icon: Icons.add_box_outlined,
+              label: 'Contribuer',
+              onTap: () {
+                Navigator.of(context).pop();
+                onContributeTap();
+              },
+            ),
+            _DrawerAction(
+              icon: Icons.tune_rounded,
+              label: 'Preferences',
+              onTap: () {
+                Navigator.of(context).pop();
+                onPreferencesTap();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawerAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _DrawerAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
+      leading: Icon(icon, color: Colors.white70),
+      title: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 }

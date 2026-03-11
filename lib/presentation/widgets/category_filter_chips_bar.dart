@@ -9,6 +9,7 @@ class CategoryFilterChipsBar extends StatelessWidget {
   final String allLabel;
   final bool darkMode;
   final EdgeInsetsGeometry? padding;
+  final bool textOnly;
 
   const CategoryFilterChipsBar({
     super.key,
@@ -18,6 +19,7 @@ class CategoryFilterChipsBar extends StatelessWidget {
     this.allLabel = 'Découverte',
     this.darkMode = false,
     this.padding,
+    this.textOnly = false,
   });
 
   @override
@@ -31,6 +33,7 @@ class CategoryFilterChipsBar extends StatelessWidget {
             label: allLabel,
             isActive: selectedSlug == null,
             darkMode: darkMode,
+            textOnly: textOnly,
             onTap: () => onSelected(null),
           ),
           for (final category in categories) ...[
@@ -39,6 +42,7 @@ class CategoryFilterChipsBar extends StatelessWidget {
               label: category.name,
               isActive: selectedSlug == category.slug,
               darkMode: darkMode,
+              textOnly: textOnly,
               onTap: () => onSelected(category),
             ),
           ],
@@ -52,12 +56,14 @@ class _CategoryFilterChip extends StatelessWidget {
   final String label;
   final bool isActive;
   final bool darkMode;
+  final bool textOnly;
   final VoidCallback onTap;
 
   const _CategoryFilterChip({
     required this.label,
     required this.isActive,
     required this.darkMode,
+    required this.textOnly,
     required this.onTap,
   });
 
@@ -70,6 +76,29 @@ class _CategoryFilterChip extends StatelessWidget {
         : Colors.black.withValues(alpha: 0.04);
     final inactiveFg = darkMode ? Colors.white : Colors.black87;
     final inactiveBorder = darkMode ? Colors.white24 : Colors.black12;
+    final activeText = darkMode ? Colors.white : Colors.black87;
+    final inactiveText = darkMode
+        ? Colors.white.withValues(alpha: 0.62)
+        : Colors.black54;
+
+    if (textOnly) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isActive ? activeText : inactiveText,
+              fontSize: 13,
+              height: 1.1,
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
 
     return InkWell(
       onTap: onTap,

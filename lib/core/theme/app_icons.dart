@@ -37,6 +37,7 @@ class AppIcons {
   static const IconData lock_outline = Iconsax.lock;
   static const IconData logout = Iconsax.logout;
   static const IconData map_outlined = Iconsax.map;
+  static const IconData menu = Iconsax.menu;
   static const IconData my_location_outlined = Iconsax.location;
   static const IconData near_me_outlined = Iconsax.location;
   static const IconData open_in_new = Iconsax.arrow_right_4;
